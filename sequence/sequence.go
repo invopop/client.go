@@ -23,7 +23,7 @@ type SequenceClient struct {
 }
 
 // New instantiates a new instance of the sequence client with its multiple
-// resource clients
+// resource's clients
 func New(signer *keystore.Signer, grpc *grpc.ClientConn) *SequenceClient {
 	cli := new(SequenceClient)
 
