@@ -11,14 +11,15 @@ import (
 	api "github.com/invopop/client/api"
 )
 
-// Sequence defines an API client structure to manage sequence resources.
+// Sequence defines a wrapper client for the API to reach the sequence
+// resources.
 type Sequence struct {
 	baseUrl string
 	client  *http.Client
 }
 
-// New instantiates a new instance of the sequence client with its multiple
-// resource's clients
+// New instantiates a new instance of the sequence wrapper client with a
+// simple http Client
 func New(url string) *Sequence {
 	s := new(Sequence)
 
