@@ -59,19 +59,19 @@ func (cli *SequenceClient) FetchCode(ownerID string, codeID string) (*sequence.C
 	return cli.validatedFetchCode(ownerID, codeID)
 }
 
-func (cli *SequenceClient) CreateCode(ownerID string, nc *CodeParameters) (*sequence.CodeResponse, error) {
+func (cli *SequenceClient) CreateCode(ownerID string, params *CodeParameters) (*sequence.CodeResponse, error) {
 	var err error
 
 	newCodeReq := sequence.CreateCodeRequest{
 		Id: uuid.New().String(),
 		Owner: &sequence.Owner{
 			Id:   ownerID,
-			Name: nc.Name,
+			Name: params.Name,
 		},
-		Name:    nc.Name,
-		Prefix:  nc.Prefix,
-		Suffix:  nc.Suffix,
-		Padding: nc.Padding,
+		Name:    params.Name,
+		Prefix:  params.Prefix,
+		Suffix:  params.Suffix,
+		Padding: params.Padding,
 	}
 
 	codeRes, err := cli.code.Create(context.Background(), &newCodeReq)
@@ -129,7 +129,7 @@ func (cli *SequenceClient) FetchEntry(ownerID string, codeID string, entryID str
 	return entryRes, nil
 }
 
-func (cli *SequenceClient) CreateEntry(ownerID string, codeID string, ne *EntryParameters) (*sequence.EntryResponse, error) {
+func (cli *SequenceClient) CreateEntry(ownerID string, codeID string, params *EntryParameters) (*sequence.EntryResponse, error) {
 	var err error
 
 	if _, err := cli.validatedFetchCode(ownerID, codeID); err != nil {
@@ -139,7 +139,7 @@ func (cli *SequenceClient) CreateEntry(ownerID string, codeID string, ne *EntryP
 	newEntryReq := sequence.CreateEntryRequest{
 		Id:     uuid.New().String(),
 		CodeId: codeID,
-		Meta:   ne.Meta,
+		Meta:   params.Meta,
 	}
 
 	sig, err := cli.signer.Sign(sequence.EntrySigMsg{
@@ -147,7 +147,7 @@ func (cli *SequenceClient) CreateEntry(ownerID string, codeID string, ne *EntryP
 		Cid:  newEntryReq.CodeId,
 		Pid:  "",
 		Num:  "",
-		Meta: ne.Meta,
+		Meta: params.Meta,
 		Ts:   time.Now().Unix(),
 	})
 
