@@ -1,13 +1,11 @@
 package sequence
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/dghubble/sling"
 	api "github.com/invopop/client/api"
 )
 
@@ -16,6 +14,7 @@ import (
 type Sequence struct {
 	baseUrl string
 	client  *http.Client
+	baseReq *sling.Sling
 }
 
 // New instantiates a new instance of the sequence wrapper client with a
@@ -23,172 +22,117 @@ type Sequence struct {
 func New(url string) *Sequence {
 	s := new(Sequence)
 
-	s.baseUrl = fmt.Sprintf("%s/sequence", url)
+	s.baseUrl = fmt.Sprintf("%s/sequence/", url) // TODO: check trailing slash
 	s.client = &http.Client{
 		Timeout: time.Second * 10,
 	}
+	s.baseReq = sling.New().Base(s.baseUrl).Client(s.client)
 
 	return s
 }
 
-func (s *Sequence) sendRequest(req *http.Request, v interface{}) *api.ClientError {
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Accept", "application/json; charset=utf-8")
+func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) *api.ClientError {
+	failV := new(api.APIError)
 
-	res, err := s.client.Do(req)
+	resp, err := req.Receive(succV, failV)
 	if err != nil {
 		return api.NewInternalError(err.Error())
 	}
 
-	defer res.Body.Close()
-
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
-		var errRes api.APIError
-
-		err = json.NewDecoder(res.Body).Decode(&errRes)
-		if err == nil {
-			return api.NewError(res.StatusCode, errRes.Message)
-		}
-
-		return api.NewError(res.StatusCode, err.Error())
-	}
-
-	if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
-		return api.NewInternalError(err.Error())
+	if !failV.IsNil() {
+		return api.NewError(resp.StatusCode, failV.Message)
 	}
 
 	return nil
 }
 
 func (s *Sequence) FetchCodeCollection(
-	c context.Context,
 	ownerID string,
 ) (*CodeCollection, *api.ClientError) {
-	path := fmt.Sprintf("%s/%s/codes", s.baseUrl, ownerID)
+	path := fmt.Sprintf("%s/codes", ownerID)
+	codes := new(CodeCollection)
+	req := s.baseReq.New().Get(path)
 
-	req, err := http.NewRequest("GET", path, nil)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(CodeCollection)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, codes); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return codes, nil
 }
 
 func (s *Sequence) FetchCode(
-	c context.Context,
 	ownerID string,
 	codeID string,
 ) (*Code, *api.ClientError) {
-	path := fmt.Sprintf("%s/%s/code/%s", s.baseUrl, ownerID, codeID)
+	path := fmt.Sprintf("%s/code/%s", ownerID, codeID)
+	code := new(Code)
+	req := s.baseReq.New().Get(path)
 
-	req, err := http.NewRequest("GET", path, nil)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(Code)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, code); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return code, nil
 }
 
 func (s *Sequence) CreateCode(
-	c context.Context,
 	ownerID string,
 	params *CodeParameters,
-) (*Code, error) {
-	path := fmt.Sprintf("%s/%s/code", s.baseUrl, ownerID)
+) (*Code, *api.ClientError) {
+	path := fmt.Sprintf("%s/code", ownerID)
+	code := new(Code)
+	req := s.baseReq.New().Post(path).BodyJSON(params)
 
-	payload := new(bytes.Buffer)
-	json.NewEncoder(payload).Encode(params)
-
-	req, err := http.NewRequest("POST", path, payload)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(Code)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, code); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return code, nil
 }
 
 func (s *Sequence) FetchEntryCollection(
-	c context.Context,
 	ownerID string,
 	codeID string,
 ) (*EntryCollection, *api.ClientError) {
-	path := fmt.Sprintf("%s/%s/code/%s/entries", s.baseUrl, ownerID, codeID)
+	path := fmt.Sprintf("%s/code/%s/entries", ownerID, codeID)
+	entries := new(EntryCollection)
+	req := s.baseReq.New().Get(path)
 
-	req, err := http.NewRequest("GET", path, nil)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(EntryCollection)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, entries); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return entries, nil
 }
 
 func (s *Sequence) FetchEntry(
-	c context.Context,
 	ownerID string,
 	codeID string,
 	entryID string,
 ) (*Entry, *api.ClientError) {
-	path := fmt.Sprintf("%s/%s/code/%s/entry/%s", s.baseUrl, ownerID, codeID, entryID)
+	path := fmt.Sprintf("%s/code/%s/entry/%s", ownerID, codeID, entryID)
+	entry := new(Entry)
+	req := s.baseReq.New().Get(path)
 
-	req, err := http.NewRequest("GET", path, nil)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(Entry)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, entry); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return entry, nil
 }
 
 func (s *Sequence) CreateEntry(
-	c context.Context,
 	ownerID string,
 	codeID string,
 	params *EntryParameters,
-) (*Entry, error) {
-	path := fmt.Sprintf("%s/%s/code/%s/entry", s.baseUrl, ownerID, codeID)
+) (*Entry, *api.ClientError) {
+	path := fmt.Sprintf("%s/code/%s/entry", ownerID, codeID)
+	entry := new(Entry)
+	req := s.baseReq.New().Post(path).BodyJSON(params)
 
-	payload := new(bytes.Buffer)
-	json.NewEncoder(payload).Encode(params)
-
-	req, err := http.NewRequest("POST", path, payload)
-	if err != nil {
-		return nil, api.NewInternalError(err.Error())
-	}
-	req = req.WithContext(c)
-
-	res := new(Entry)
-	if err := s.sendRequest(req, res); err != nil {
+	if err := s.sendRequest(req, entry); err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	return entry, nil
 }

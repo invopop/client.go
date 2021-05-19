@@ -8,6 +8,10 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
+func (err *APIError) IsNil() bool {
+	return err.Message == ""
+}
+
 type ClientError struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`

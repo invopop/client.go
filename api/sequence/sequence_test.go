@@ -1,7 +1,6 @@
 package sequence_test
 
 import (
-	"context"
 	"net/http"
 	"os"
 	"testing"
@@ -31,9 +30,8 @@ func TestRun(t *testing.T) {
 }
 
 func runCode(t *testing.T, s *sequence.Sequence) {
-	ctx := context.Background()
 
-	nc, err := s.CreateCode(ctx, ownerID, &sequence.CodeParameters{
+	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
 		Name:    "test",
 		Prefix:  "test",
 		Suffix:  "test",
@@ -42,14 +40,14 @@ func runCode(t *testing.T, s *sequence.Sequence) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	cs, err := s.FetchCodeCollection(ctx, nc.Owner.ID)
+	cs, err := s.FetchCodeCollection(nc.Owner.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, cs, "expecting non-nil codes")
 
 	assert.Greater(t, len(cs.Codes), 0, "at least one code found")
 
-	c, err := s.FetchCode(ctx, nc.Owner.ID, nc.ID)
+	c, err := s.FetchCode(nc.Owner.ID, nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, c, "expecting non-nil code")
@@ -58,8 +56,7 @@ func runCode(t *testing.T, s *sequence.Sequence) {
 }
 
 func runFetchCodeError(t *testing.T, s *sequence.Sequence) {
-	ctx := context.Background()
-	res, err := s.FetchCode(ctx, uuid.New().String(), uuid.New().String())
+	res, err := s.FetchCode(uuid.New().String(), uuid.New().String())
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")
@@ -68,9 +65,8 @@ func runFetchCodeError(t *testing.T, s *sequence.Sequence) {
 }
 
 func runEntry(t *testing.T, s *sequence.Sequence) {
-	ctx := context.Background()
 
-	nc, err := s.CreateCode(ctx, ownerID, &sequence.CodeParameters{
+	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
 		Name:    "test",
 		Prefix:  "test",
 		Suffix:  "test",
@@ -79,7 +75,7 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	ne, err := s.CreateEntry(ctx, ownerID, nc.ID, &sequence.EntryParameters{
+	ne, err := s.CreateEntry(ownerID, nc.ID, &sequence.EntryParameters{
 		Meta: map[string]string{
 			"key": "value",
 		},
@@ -87,14 +83,14 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	es, err := s.FetchEntryCollection(ctx, nc.Owner.ID, nc.ID)
+	es, err := s.FetchEntryCollection(nc.Owner.ID, nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, es, "expecting non-nil entries")
 
 	assert.Greater(t, len(es.Entries), 0, "at least one entry found")
 
-	e, err := s.FetchEntry(ctx, nc.Owner.ID, nc.ID, ne.ID)
+	e, err := s.FetchEntry(nc.Owner.ID, nc.ID, ne.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, e, "expecting non-nil entry")
@@ -103,9 +99,7 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 }
 
 func runFetchEntryError(t *testing.T, s *sequence.Sequence) {
-	ctx := context.Background()
 	res, err := s.FetchEntry(
-		ctx,
 		uuid.New().String(),
 		uuid.New().String(),
 		uuid.New().String(),
