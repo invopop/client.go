@@ -1,12 +1,12 @@
 package sequence
 
 type Owner struct {
-	Id   string `json:"id"`
+	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
 type Code struct {
-	Id          string `json:"id"`
+	ID          string `json:"id"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
 	Owner       *Owner `json:"owner"`
@@ -15,7 +15,7 @@ type Code struct {
 	Padding     int32  `json:"padding"`
 	Suffix      string `json:"suffix"`
 	LastIndex   int64  `json:"last_index,omitempty"`
-	LastEntryId string `json:"last_entry_id,omitempty"`
+	LastEntryID string `json:"last_entry_id,omitempty"`
 }
 
 type CodeCollection struct {
@@ -23,14 +23,14 @@ type CodeCollection struct {
 }
 
 type Entry struct {
-	Id        string            `json:"id"`
+	ID        string            `json:"id"`
 	CreatedAt string            `json:"created_at"`
 	UpdatedAt string            `json:"updated_at"`
-	CodeId    string            `json:"code_id"`
+	CodeID    string            `json:"code_id"`
 	Idx       int64             `json:"idx"`
 	Value     string            `json:"value"`
 	Meta      map[string]string `json:"meta,omitempty"`
-	PrevId    string            `json:"prev_id,omitempty"`
+	PrevID    string            `json:"prev_id,omitempty"`
 	Sigs      []string          `json:"sigs"`
 }
 
