@@ -31,15 +31,15 @@ func New(url string) *Sequence {
 	return s
 }
 
-func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) *api.ClientError {
+func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) error {
 	failV := new(api.APIError)
 
 	resp, err := req.Receive(succV, failV)
 	if err != nil {
-		return api.NewInternalError(err.Error())
+		return api.NewError(http.StatusInternalServerError, err.Error())
 	}
 
-	if !failV.IsNil() {
+	if failV.Message != "" {
 		return api.NewError(resp.StatusCode, failV.Message)
 	}
 
@@ -48,7 +48,7 @@ func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) *api.ClientE
 
 func (s *Sequence) FetchCodeCollection(
 	ownerID string,
-) (*CodeCollection, *api.ClientError) {
+) (*CodeCollection, error) {
 	path := fmt.Sprintf("%s/codes", ownerID)
 	codes := new(CodeCollection)
 	req := s.baseReq.New().Get(path)
@@ -63,7 +63,7 @@ func (s *Sequence) FetchCodeCollection(
 func (s *Sequence) FetchCode(
 	ownerID string,
 	codeID string,
-) (*Code, *api.ClientError) {
+) (*Code, error) {
 	path := fmt.Sprintf("%s/code/%s", ownerID, codeID)
 	code := new(Code)
 	req := s.baseReq.New().Get(path)
@@ -78,7 +78,7 @@ func (s *Sequence) FetchCode(
 func (s *Sequence) CreateCode(
 	ownerID string,
 	params *CodeParameters,
-) (*Code, *api.ClientError) {
+) (*Code, error) {
 	path := fmt.Sprintf("%s/code", ownerID)
 	code := new(Code)
 	req := s.baseReq.New().Post(path).BodyJSON(params)
@@ -93,7 +93,7 @@ func (s *Sequence) CreateCode(
 func (s *Sequence) FetchEntryCollection(
 	ownerID string,
 	codeID string,
-) (*EntryCollection, *api.ClientError) {
+) (*EntryCollection, error) {
 	path := fmt.Sprintf("%s/code/%s/entries", ownerID, codeID)
 	entries := new(EntryCollection)
 	req := s.baseReq.New().Get(path)
@@ -109,7 +109,7 @@ func (s *Sequence) FetchEntry(
 	ownerID string,
 	codeID string,
 	entryID string,
-) (*Entry, *api.ClientError) {
+) (*Entry, error) {
 	path := fmt.Sprintf("%s/code/%s/entry/%s", ownerID, codeID, entryID)
 	entry := new(Entry)
 	req := s.baseReq.New().Get(path)
@@ -125,7 +125,7 @@ func (s *Sequence) CreateEntry(
 	ownerID string,
 	codeID string,
 	params *EntryParameters,
-) (*Entry, *api.ClientError) {
+) (*Entry, error) {
 	path := fmt.Sprintf("%s/code/%s/entry", ownerID, codeID)
 	entry := new(Entry)
 	req := s.baseReq.New().Post(path).BodyJSON(params)

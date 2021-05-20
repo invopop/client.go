@@ -1,7 +1,6 @@
 package sequence_test
 
 import (
-	"net/http"
 	"os"
 	"testing"
 
@@ -32,6 +31,7 @@ func TestRun(t *testing.T) {
 func runCode(t *testing.T, s *sequence.Sequence) {
 
 	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
+		ID:      uuid.New().String(),
 		Name:    "test",
 		Prefix:  "test",
 		Suffix:  "test",
@@ -40,14 +40,14 @@ func runCode(t *testing.T, s *sequence.Sequence) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	cs, err := s.FetchCodeCollection(nc.Owner.ID)
+	cs, err := s.FetchCodeCollection(ownerID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, cs, "expecting non-nil codes")
 
 	assert.Greater(t, len(cs.Codes), 0, "at least one code found")
 
-	c, err := s.FetchCode(nc.Owner.ID, nc.ID)
+	c, err := s.FetchCode(ownerID, nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, c, "expecting non-nil code")
@@ -60,13 +60,12 @@ func runFetchCodeError(t *testing.T, s *sequence.Sequence) {
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")
-
-	assert.Equal(t, http.StatusNotFound, err.Status, "no codes found")
 }
 
 func runEntry(t *testing.T, s *sequence.Sequence) {
 
 	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
+		ID:      uuid.New().String(),
 		Name:    "test",
 		Prefix:  "test",
 		Suffix:  "test",
@@ -76,6 +75,7 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 	assert.Nil(t, err, "expecting nil error")
 
 	ne, err := s.CreateEntry(ownerID, nc.ID, &sequence.EntryParameters{
+		ID: uuid.New().String(),
 		Meta: map[string]string{
 			"key": "value",
 		},
@@ -83,14 +83,14 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	es, err := s.FetchEntryCollection(nc.Owner.ID, nc.ID)
+	es, err := s.FetchEntryCollection(ownerID, nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, es, "expecting non-nil entries")
 
 	assert.Greater(t, len(es.Entries), 0, "at least one entry found")
 
-	e, err := s.FetchEntry(nc.Owner.ID, nc.ID, ne.ID)
+	e, err := s.FetchEntry(ownerID, nc.ID, ne.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, e, "expecting non-nil entry")
@@ -107,6 +107,4 @@ func runFetchEntryError(t *testing.T, s *sequence.Sequence) {
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")
-
-	assert.Equal(t, http.StatusNotFound, err.Status, "no entry found")
 }

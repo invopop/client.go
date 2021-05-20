@@ -7,9 +7,6 @@ type Owner struct {
 
 type Code struct {
 	ID          string `json:"id"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	Owner       *Owner `json:"owner"`
 	Name        string `json:"name"`
 	Prefix      string `json:"prefix"`
 	Padding     int32  `json:"padding"`
@@ -23,15 +20,12 @@ type CodeCollection struct {
 }
 
 type Entry struct {
-	ID        string            `json:"id"`
-	CreatedAt string            `json:"created_at"`
-	UpdatedAt string            `json:"updated_at"`
-	CodeID    string            `json:"code_id"`
-	Idx       int64             `json:"idx"`
-	Value     string            `json:"value"`
-	Meta      map[string]string `json:"meta,omitempty"`
-	PrevID    string            `json:"prev_id,omitempty"`
-	Sigs      []string          `json:"sigs"`
+	ID     string            `json:"id"`
+	CodeID string            `json:"code_id"`
+	Idx    int64             `json:"idx"`
+	Value  string            `json:"value"`
+	Meta   map[string]string `json:"meta,omitempty"`
+	PrevID string            `json:"prev_id,omitempty"`
 }
 
 type EntryCollection struct {

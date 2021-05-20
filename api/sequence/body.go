@@ -1,6 +1,7 @@
 package sequence
 
 type CodeParameters struct {
+	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Prefix  string `json:"prefix"`
 	Suffix  string `json:"suffix"`
@@ -8,5 +9,6 @@ type CodeParameters struct {
 }
 
 type EntryParameters struct {
+	ID   string            `json:"id"`
 	Meta map[string]string `json:"meta"`
 }
