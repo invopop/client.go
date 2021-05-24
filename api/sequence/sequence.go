@@ -9,6 +9,20 @@ import (
 	api "github.com/invopop/client/api"
 )
 
+// Client defines a the key methods to access the resources of the sequence
+// service.
+type Client interface {
+	// sendRequest is a general purpose method to make requests
+	sendRequest(req *sling.Sling, succV interface{}) error
+
+	FetchCodeCollection(ownerID string) (*CodeCollection, error)
+	FetchCode(ownerID string, codeID string) (*Code, error)
+	CreateCode(ownerID string, params *CodeParameters) (*Code, error)
+	FetchEntryCollection(ownerID string, codeID string) (*EntryCollection, error)
+	FetchEntry(ownerID string, codeID string, entryID string) (*Entry, error)
+	CreateEntry(ownerID string, codeID string, params *EntryParameters) (*Entry, error)
+}
+
 // Sequence defines a wrapper client for the API to reach the sequence
 // resources.
 type Sequence struct {
@@ -19,7 +33,7 @@ type Sequence struct {
 
 // New instantiates a new instance of the sequence wrapper client with a
 // simple http Client
-func New(url string) *Sequence {
+func New(url string) Client {
 	s := new(Sequence)
 
 	s.baseUrl = fmt.Sprintf("%s/sequence/", url) // TODO: check trailing slash

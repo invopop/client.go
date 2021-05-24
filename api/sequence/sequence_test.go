@@ -28,7 +28,7 @@ func TestRun(t *testing.T) {
 	runFetchEntryError(t, s)
 }
 
-func runCode(t *testing.T, s *sequence.Sequence) {
+func runCode(t *testing.T, s sequence.Client) {
 
 	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
 		ID:      uuid.New().String(),
@@ -55,14 +55,14 @@ func runCode(t *testing.T, s *sequence.Sequence) {
 	assert.Equal(t, c.ID, nc.ID, "fetch code same as created")
 }
 
-func runFetchCodeError(t *testing.T, s *sequence.Sequence) {
+func runFetchCodeError(t *testing.T, s sequence.Client) {
 	res, err := s.FetchCode(uuid.New().String(), uuid.New().String())
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")
 }
 
-func runEntry(t *testing.T, s *sequence.Sequence) {
+func runEntry(t *testing.T, s sequence.Client) {
 
 	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
 		ID:      uuid.New().String(),
@@ -98,7 +98,7 @@ func runEntry(t *testing.T, s *sequence.Sequence) {
 	assert.Equal(t, e.CodeID, nc.ID, "fetch entry codeID same as created code")
 }
 
-func runFetchEntryError(t *testing.T, s *sequence.Sequence) {
+func runFetchEntryError(t *testing.T, s sequence.Client) {
 	res, err := s.FetchEntry(
 		uuid.New().String(),
 		uuid.New().String(),
