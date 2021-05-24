@@ -20,7 +20,7 @@ func TestRun(t *testing.T) {
 		return
 	}
 
-	s := sequence.New(url)
+	s := sequence.New(url, "api_key")
 
 	runCode(t, s)
 	runFetchCodeError(t, s)

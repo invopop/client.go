@@ -27,16 +27,18 @@ type Client interface {
 // resources.
 type Sequence struct {
 	baseUrl string
+	apiKey  string
 	client  *http.Client
 	baseReq *sling.Sling
 }
 
 // New instantiates a new instance of the sequence wrapper client with a
 // simple http Client
-func New(url string) Client {
+func New(url string, apiKey string) Client {
 	s := new(Sequence)
 
 	s.baseUrl = fmt.Sprintf("%s/sequence/", url) // TODO: check trailing slash
+	s.apiKey = apiKey
 	s.client = &http.Client{
 		Timeout: time.Second * 10,
 	}
