@@ -1,10 +1,6 @@
 package sequence
 
-type Owner struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
+// Code defines the structure of a code.
 type Code struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -15,10 +11,12 @@ type Code struct {
 	LastEntryID string `json:"last_entry_id,omitempty"`
 }
 
+// CodeCollection defines the structure which holds a list of codes.
 type CodeCollection struct {
 	Codes []*Code `json:"codes"`
 }
 
+// Entry defines the structure of a entry.
 type Entry struct {
 	ID     string            `json:"id"`
 	CodeID string            `json:"code_id"`
@@ -28,6 +26,7 @@ type Entry struct {
 	PrevID string            `json:"prev_id,omitempty"`
 }
 
+// EntryCollection defines the structure which holds a list of entries.
 type EntryCollection struct {
 	Entries []*Entry `json:"entries"`
 }
