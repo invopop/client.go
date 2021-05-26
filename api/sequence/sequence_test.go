@@ -9,10 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	ownerID = "fb3ad823-65fe-4a15-beff-7cea085c7b29"
-)
-
 func TestRun(t *testing.T) {
 	url := os.Getenv("INVOPOP_API_URL")
 	if url == "" {
@@ -20,7 +16,13 @@ func TestRun(t *testing.T) {
 		return
 	}
 
-	s := sequence.New(url, "api_key")
+	apiKey := os.Getenv("INVOPOP_API_KEY")
+	if apiKey == "" {
+		t.Logf("run `export INVOPOP_API_KEY=<api_key>` to test")
+		return
+	}
+
+	s := sequence.New(url, apiKey)
 
 	runCode(t, s)
 	runFetchCodeError(t, s)
@@ -30,7 +32,7 @@ func TestRun(t *testing.T) {
 
 func runCode(t *testing.T, s sequence.Client) {
 
-	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
+	nc, err := s.CreateCode(&sequence.CodeParameters{
 		ID:      uuid.New().String(),
 		Name:    "test",
 		Prefix:  "test",
@@ -40,14 +42,14 @@ func runCode(t *testing.T, s sequence.Client) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	cs, err := s.FetchCodeCollection(ownerID)
+	cs, err := s.FetchCodeCollection()
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, cs, "expecting non-nil codes")
 
 	assert.Greater(t, len(cs.Codes), 0, "at least one code found")
 
-	c, err := s.FetchCode(ownerID, nc.ID)
+	c, err := s.FetchCode(nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, c, "expecting non-nil code")
@@ -56,7 +58,7 @@ func runCode(t *testing.T, s sequence.Client) {
 }
 
 func runFetchCodeError(t *testing.T, s sequence.Client) {
-	res, err := s.FetchCode(uuid.New().String(), uuid.New().String())
+	res, err := s.FetchCode(uuid.New().String())
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")
@@ -64,7 +66,7 @@ func runFetchCodeError(t *testing.T, s sequence.Client) {
 
 func runEntry(t *testing.T, s sequence.Client) {
 
-	nc, err := s.CreateCode(ownerID, &sequence.CodeParameters{
+	nc, err := s.CreateCode(&sequence.CodeParameters{
 		ID:      uuid.New().String(),
 		Name:    "test",
 		Prefix:  "test",
@@ -74,7 +76,7 @@ func runEntry(t *testing.T, s sequence.Client) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	ne, err := s.CreateEntry(ownerID, nc.ID, &sequence.EntryParameters{
+	ne, err := s.CreateEntry(nc.ID, &sequence.EntryParameters{
 		ID: uuid.New().String(),
 		Meta: map[string]string{
 			"key": "value",
@@ -83,27 +85,21 @@ func runEntry(t *testing.T, s sequence.Client) {
 
 	assert.Nil(t, err, "expecting nil error")
 
-	es, err := s.FetchEntryCollection(ownerID, nc.ID)
+	es, err := s.FetchEntryCollection(nc.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, es, "expecting non-nil entries")
 
 	assert.Greater(t, len(es.Entries), 0, "at least one entry found")
 
-	e, err := s.FetchEntry(ownerID, nc.ID, ne.ID)
+	e, err := s.FetchEntry(nc.ID, ne.ID)
 
 	assert.Nil(t, err, "expecting nil error")
 	assert.NotNil(t, e, "expecting non-nil entry")
-
-	assert.Equal(t, e.CodeID, nc.ID, "fetch entry codeID same as created code")
 }
 
 func runFetchEntryError(t *testing.T, s sequence.Client) {
-	res, err := s.FetchEntry(
-		uuid.New().String(),
-		uuid.New().String(),
-		uuid.New().String(),
-	)
+	res, err := s.FetchEntry(uuid.New().String(), uuid.New().String())
 
 	assert.NotNil(t, err, "expecting error")
 	assert.Nil(t, res, "expecting nil result")

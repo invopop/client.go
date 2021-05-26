@@ -15,12 +15,12 @@ type Client interface {
 	// sendRequest is a general purpose method to make requests
 	sendRequest(req *sling.Sling, succV interface{}) error
 
-	FetchCodeCollection(ownerID string) (*CodeCollection, error)
-	FetchCode(ownerID string, codeID string) (*Code, error)
-	CreateCode(ownerID string, params *CodeParameters) (*Code, error)
-	FetchEntryCollection(ownerID string, codeID string) (*EntryCollection, error)
-	FetchEntry(ownerID string, codeID string, entryID string) (*Entry, error)
-	CreateEntry(ownerID string, codeID string, params *EntryParameters) (*Entry, error)
+	FetchCodeCollection() (*CodeCollection, error)
+	FetchCode(codeID string) (*Code, error)
+	CreateCode(params *CodeParameters) (*Code, error)
+	FetchEntryCollection(codeID string) (*EntryCollection, error)
+	FetchEntry(codeID string, entryID string) (*Entry, error)
+	CreateEntry(codeID string, params *EntryParameters) (*Entry, error)
 }
 
 // Sequence defines a wrapper client for the API to reach the sequence
@@ -42,7 +42,10 @@ func New(url string, apiKey string) Client {
 	s.client = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	s.baseReq = sling.New().Base(s.baseUrl).Client(s.client)
+	s.baseReq = sling.New().
+		Base(s.baseUrl).
+		Set("Authorization", fmt.Sprintf("Bearer %s", s.apiKey)).
+		Client(s.client)
 
 	return s
 }
@@ -62,10 +65,10 @@ func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) error {
 	return nil
 }
 
-func (s *Sequence) FetchCodeCollection(
-	ownerID string,
-) (*CodeCollection, error) {
-	path := fmt.Sprintf("%s/codes", ownerID)
+// FetchCodeCollection returns a list of code objects belonging to the user's
+// owner.
+func (s *Sequence) FetchCodeCollection() (*CodeCollection, error) {
+	path := "codes"
 	codes := new(CodeCollection)
 	req := s.baseReq.New().Get(path)
 
@@ -76,11 +79,10 @@ func (s *Sequence) FetchCodeCollection(
 	return codes, nil
 }
 
-func (s *Sequence) FetchCode(
-	ownerID string,
-	codeID string,
-) (*Code, error) {
-	path := fmt.Sprintf("%s/code/%s", ownerID, codeID)
+// FetchCode returns a specific code for a given code identifier, if it belongs
+// to the user's owner.
+func (s *Sequence) FetchCode(codeID string) (*Code, error) {
+	path := fmt.Sprintf("code/%s", codeID)
 	code := new(Code)
 	req := s.baseReq.New().Get(path)
 
@@ -91,11 +93,9 @@ func (s *Sequence) FetchCode(
 	return code, nil
 }
 
-func (s *Sequence) CreateCode(
-	ownerID string,
-	params *CodeParameters,
-) (*Code, error) {
-	path := fmt.Sprintf("%s/code", ownerID)
+// CreateCode returns a new code with the given parameters.
+func (s *Sequence) CreateCode(params *CodeParameters) (*Code, error) {
+	path := "code"
 	code := new(Code)
 	req := s.baseReq.New().Post(path).BodyJSON(params)
 
@@ -106,11 +106,10 @@ func (s *Sequence) CreateCode(
 	return code, nil
 }
 
-func (s *Sequence) FetchEntryCollection(
-	ownerID string,
-	codeID string,
-) (*EntryCollection, error) {
-	path := fmt.Sprintf("%s/code/%s/entries", ownerID, codeID)
+// FetchEntryCollection returns a list of entry objects belonging to the user's
+// code.
+func (s *Sequence) FetchEntryCollection(codeID string) (*EntryCollection, error) {
+	path := fmt.Sprintf("code/%s/entries", codeID)
 	entries := new(EntryCollection)
 	req := s.baseReq.New().Get(path)
 
@@ -121,12 +120,10 @@ func (s *Sequence) FetchEntryCollection(
 	return entries, nil
 }
 
-func (s *Sequence) FetchEntry(
-	ownerID string,
-	codeID string,
-	entryID string,
-) (*Entry, error) {
-	path := fmt.Sprintf("%s/code/%s/entry/%s", ownerID, codeID, entryID)
+// FetchEntry returns a specific entry for a given entry identifier, if it
+// belongs to the user's code.
+func (s *Sequence) FetchEntry(codeID string, entryID string) (*Entry, error) {
+	path := fmt.Sprintf("code/%s/entry/%s", codeID, entryID)
 	entry := new(Entry)
 	req := s.baseReq.New().Get(path)
 
@@ -137,12 +134,10 @@ func (s *Sequence) FetchEntry(
 	return entry, nil
 }
 
-func (s *Sequence) CreateEntry(
-	ownerID string,
-	codeID string,
-	params *EntryParameters,
-) (*Entry, error) {
-	path := fmt.Sprintf("%s/code/%s/entry", ownerID, codeID)
+// CreateEntry returns a new entry with the given parameters, and asigning it
+// to code's entries.
+func (s *Sequence) CreateEntry(codeID string, params *EntryParameters) (*Entry, error) {
+	path := fmt.Sprintf("code/%s/entry", codeID)
 	entry := new(Entry)
 	req := s.baseReq.New().Post(path).BodyJSON(params)
 
