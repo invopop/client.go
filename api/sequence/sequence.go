@@ -53,13 +53,13 @@ func New(url string, apiKey string) Client {
 func (s *Sequence) sendRequest(req *sling.Sling, succV interface{}) error {
 	failV := new(api.APIError)
 
-	resp, err := req.Receive(succV, failV)
+	_, err := req.Receive(succV, failV)
 	if err != nil {
-		return api.NewError(http.StatusInternalServerError, err.Error())
+		return api.NewError(err.Error())
 	}
 
 	if failV.Message != "" {
-		return api.NewError(resp.StatusCode, failV.Message)
+		return api.NewError(failV.Message)
 	}
 
 	return nil
