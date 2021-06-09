@@ -19,8 +19,6 @@ type CodeCollection struct {
 // Entry defines the structure of a entry.
 type Entry struct {
 	ID     string            `json:"id"`
-	CodeID string            `json:"code_id"`
-	Idx    int64             `json:"idx"`
 	Value  string            `json:"value"`
 	Meta   map[string]string `json:"meta,omitempty"`
 	PrevID string            `json:"prev_id,omitempty"`
