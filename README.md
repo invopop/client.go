@@ -1,23 +1,36 @@
-# client
-API Client Library
+# Invopop Go Client
 
-## Test
+The official Invopop API Go Client Library.
 
-### Sequence client
+## Usage
 
-Run the following command to run the sequence tests
+Start using the Invopop Client in your project by importing the library and initializing the client:
 
-```shell
-go test -v api/sequence/sequence_test.go
+```go
+
+import (
+    "context"
+    "os"
+
+    "github.com/invopop/client.go/invopop"
+)
+
+func main() {
+    ctx := context.Background()
+    host, _ := os.Getenv("INVOPOP_HOST")
+    token, _ := os.Getenv("INVOPOP_TOKEN")
+    ic := invopop.New(host, token)
+
+    p := new(invopop.Ping)
+    if err := ic.Ping.Fetch(ctx, p); err != nil {
+        panic(err.Error())
+    }
+    fmt.Printf("%v\n", p)
+}
 ```
 
-If the API server has issues with its SSL certificate, use the following
-configuration to use a insecure conection (don't push, just for dev and test).
+The Invopop API is split into individual namespaces, these are:
 
-```
-    Transport: &http.Transport{
-        TLSClientConfig: &tls.Config{
-            InsecureSkipVerify: true,
-        },
-    },
-```
+ * `Sequence` - used for generating sequential numbers or codes called `Series`.
+ * `Transform` - used to configure `Task`s and `Workflow`s that will be requested to be used when processing `Job`s.
+ * `Silo` - for storing GOBL envelopes that will later processed by Jobs and whose task results, if any, will also be stored in the silo service.
