@@ -50,10 +50,10 @@ func (svc *SequenceService) ListSeries(ctx context.Context, sc *SeriesCollection
 // CreateSeries will create the series.
 func (svc *SequenceService) CreateSeries(ctx context.Context, s *Series) error {
 	path := fmt.Sprintf("%s/series/%s", sequenceBasePath, s.ID)
-	return svc.client.post(ctx, path, s)
+	return svc.client.put(ctx, path, s)
 }
 
 func (svc *SequenceService) CreateEntry(ctx context.Context, seriesID string, se *SeriesEntry) error {
 	path := fmt.Sprintf("%s/series/%s/entries/%s", sequenceBasePath, seriesID, se.ID)
-	return svc.client.post(ctx, path, se)
+	return svc.client.put(ctx, path, se)
 }
