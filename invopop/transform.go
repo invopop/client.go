@@ -35,8 +35,8 @@ func (j *Job) Status() (bool, error) {
 	if j.CompletedAt == "" {
 		return false, nil
 	}
-	intent := j.Intents[len(j.Intents)]
-	event := intent.Events[len(intent.Events)]
+	intent := j.Intents[len(j.Intents)-1]
+	event := intent.Events[len(intent.Events)-1]
 	if event.Status == "KO" {
 		return true, fmt.Errorf("Task %s failed at %s: %s", intent.TaskID, event.At, event.Message)
 	}
