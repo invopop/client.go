@@ -1,6 +1,9 @@
 package invopop
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 const (
 	transformBasePath = "/transform/v1"
@@ -24,6 +27,20 @@ type Job struct {
 	// Properties returned in response after completion
 	Envelope    json.RawMessage `json:"envelope,omitempty"`
 	Attachments []*Attachment   `json:"attachments,omitempty"`
+}
+
+// Status returns true if the job has completed, and if there were any problems
+// executing the jobs, an error.
+func (j *Job) Status() (bool, error) {
+	if j.CompletedAt == "" {
+		return false, nil
+	}
+	intent := j.Intents[len(j.Intents)]
+	event := intent.Events[len(intent.Events)]
+	if event.Status == "KO" {
+		return true, fmt.Errorf("Task %s failed at %s: %s", intent.TaskID, event.At, event.Message)
+	}
+	return true, nil
 }
 
 // JobIntent represents an attempt to execute a task.
