@@ -116,7 +116,7 @@ func (r *ResponseError) handle(res *resty.Response) error {
 	return r
 }
 
-// StatusCode provides the response status code, or 0 if an error ocurred.
+// StatusCode provides the response status code, or 0 if an error occurred.
 func (r *ResponseError) StatusCode() int {
 	return r.response.StatusCode()
 }

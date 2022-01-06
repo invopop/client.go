@@ -53,6 +53,7 @@ func (svc *SequenceService) CreateSeries(ctx context.Context, s *Series) error {
 	return svc.client.put(ctx, path, s)
 }
 
+// CreateEntry ...
 func (svc *SequenceService) CreateEntry(ctx context.Context, seriesID string, se *SeriesEntry) error {
 	path := fmt.Sprintf("%s/series/%s/entries/%s", sequenceBasePath, seriesID, se.ID)
 	return svc.client.put(ctx, path, se)

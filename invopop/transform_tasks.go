@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// CreateTasks sends a request to the API to create a new task.
+// CreateTask sends a request to the API to create a new task.
 func (svc *TransformService) CreateTask(ctx context.Context, m *Task) error {
 	path := fmt.Sprintf("%s/tasks/%s", transformBasePath, m.ID)
 	return svc.client.put(ctx, path, m)
