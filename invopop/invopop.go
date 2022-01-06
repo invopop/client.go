@@ -56,7 +56,10 @@ func (c *Client) get(ctx context.Context, path string, body interface{}) error {
 		SetResult(body).
 		SetError(re).
 		Get(path)
-	return re.handle(res, err)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
 }
 
 func (c *Client) put(ctx context.Context, path string, body interface{}) error {
@@ -66,7 +69,10 @@ func (c *Client) put(ctx context.Context, path string, body interface{}) error {
 		SetError(re).
 		SetResult(body).
 		Put(path)
-	return re.handle(res, err)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
 }
 
 func (c *Client) post(ctx context.Context, path string, body interface{}) error {
@@ -76,7 +82,10 @@ func (c *Client) post(ctx context.Context, path string, body interface{}) error 
 		SetError(re).
 		SetResult(body).
 		Post(path)
-	return re.handle(res, err)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
 }
 
 // WithWait adds a wait parameter to the query where it is supported. Typically
@@ -110,10 +119,7 @@ type ResponseError struct {
 
 // handle will wrap the resty response to provide our own Response object that
 // wraps around any errors that might have happened with the connection or response.
-func (r *ResponseError) handle(res *resty.Response, err error) error {
-	if err != nil {
-		return err
-	}
+func (r *ResponseError) handle(res *resty.Response) error {
 	if res.IsSuccess() {
 		return nil
 	}
