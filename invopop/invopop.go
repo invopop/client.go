@@ -112,7 +112,7 @@ type ResponseError struct {
 // wraps around any errors that might have happened with the connection or response.
 func (r *ResponseError) handle(res *resty.Response, err error) error {
 	if err != nil {
-		return fmt.Errorf("network failure: %w", err)
+		return err
 	}
 	if res.IsSuccess() {
 		return nil
