@@ -75,19 +75,6 @@ func (c *Client) put(ctx context.Context, path string, body interface{}) error {
 	return re.handle(res)
 }
 
-func (c *Client) post(ctx context.Context, path string, body interface{}) error {
-	re := new(ResponseError)
-	res, err := c.conn.R().
-		SetBody(body).
-		SetError(re).
-		SetResult(body).
-		Post(path)
-	if err != nil {
-		return err
-	}
-	return re.handle(res)
-}
-
 // WithWait adds a wait parameter to the query where it is supported. Typically
 // this is used with job requests that may take longer to respond.
 func WithWait(t int) RequestOption {
