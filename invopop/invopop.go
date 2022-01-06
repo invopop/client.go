@@ -53,6 +53,7 @@ func New(host, token string) *Client {
 func (c *Client) get(ctx context.Context, path string, body interface{}) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().
+		SetContext(ctx).
 		SetResult(body).
 		SetError(re).
 		Get(path)
@@ -65,6 +66,7 @@ func (c *Client) get(ctx context.Context, path string, body interface{}) error {
 func (c *Client) put(ctx context.Context, path string, body interface{}) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().
+		SetContext(ctx).
 		SetBody(body).
 		SetError(re).
 		SetResult(body).
