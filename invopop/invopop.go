@@ -13,12 +13,30 @@ import (
 type Client struct {
 	conn *resty.Client
 
-	common service // Reuse a single struct instead of allocating one for each service on the heap.
+	ping      *PingService
+	sequence  *SequenceService
+	transform *TransformService
+	silo      *SiloService
+}
 
-	Ping      *PingService
-	Sequence  *SequenceService
-	Transform *TransformService
-	Silo      *SiloService
+// Ping provides access to the ping service.
+func (c *Client) Ping() *PingService {
+	return c.ping
+}
+
+// Sequence provides access to the sequence service.
+func (c *Client) Sequence() *SequenceService {
+	return c.sequence
+}
+
+// Transform provides access to the transform service.
+func (c *Client) Transform() *TransformService {
+	return c.transform
+}
+
+// Silo provides access to the silo service.
+func (c *Client) Silo() *SiloService {
+	return c.silo
 }
 
 type requestOptions struct {
@@ -40,12 +58,14 @@ func New(host, token string) *Client {
 		SetHostURL(host).
 		SetAuthToken(token)
 
-	c.common.client = c
+	var common service // Reuse a single struct instead of allocating one for each service on the heap.
 
-	c.Ping = (*PingService)(&c.common)
-	c.Sequence = (*SequenceService)(&c.common)
-	c.Transform = (*TransformService)(&c.common)
-	c.Silo = (*SiloService)(&c.common)
+	common.client = c
+
+	c.ping = (*PingService)(&common)
+	c.sequence = (*SequenceService)(&common)
+	c.transform = (*TransformService)(&common)
+	c.silo = (*SiloService)(&common)
 
 	return c
 }
