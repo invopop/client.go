@@ -13,15 +13,15 @@ import (
 type Client struct {
 	conn *resty.Client
 
-	ping      *PingService
+	utils     *UtilsService
 	sequence  *SequenceService
 	transform *TransformService
 	silo      *SiloService
 }
 
-// Ping provides access to the ping service.
-func (c *Client) Ping() *PingService {
-	return c.ping
+// Utils provides access to the utils service.
+func (c *Client) Utils() *UtilsService {
+	return c.utils
 }
 
 // Sequence provides access to the sequence service.
@@ -62,7 +62,7 @@ func New(host, token string) *Client {
 
 	common.client = c
 
-	c.ping = (*PingService)(&common)
+	c.utils = (*UtilsService)(&common)
 	c.sequence = (*SequenceService)(&common)
 	c.transform = (*TransformService)(&common)
 	c.silo = (*SiloService)(&common)

@@ -2,11 +2,13 @@ package invopop
 
 import (
 	"context"
-	"fmt"
+	"path"
 )
 
 const (
-	sequenceBasePath = "/sequence/v1"
+	sequenceBasePath  = "/sequence/v1"
+	seriesPath        = "series"
+	seriesEntriesPath = "entries"
 )
 
 // SequenceService handles communication with the Invopop
@@ -43,18 +45,18 @@ type SeriesEntry struct {
 // ListSeries will populate the series collection with the series that match the
 // conditions, if any.
 func (svc *SequenceService) ListSeries(ctx context.Context, sc *SeriesCollection) error {
-	path := sequenceBasePath + "/series"
-	return svc.client.get(ctx, path, sc)
+	p := path.Join(sequenceBasePath, seriesPath)
+	return svc.client.get(ctx, p, sc)
 }
 
 // CreateSeries will create the series.
 func (svc *SequenceService) CreateSeries(ctx context.Context, s *Series) error {
-	path := fmt.Sprintf("%s/series/%s", sequenceBasePath, s.ID)
-	return svc.client.put(ctx, path, s)
+	p := path.Join(sequenceBasePath, seriesPath, s.ID)
+	return svc.client.put(ctx, p, s)
 }
 
-// CreateEntry ...
+// CreateEntry will send a request to create a new series entry.
 func (svc *SequenceService) CreateEntry(ctx context.Context, seriesID string, se *SeriesEntry) error {
-	path := fmt.Sprintf("%s/series/%s/entries/%s", sequenceBasePath, seriesID, se.ID)
-	return svc.client.put(ctx, path, se)
+	p := path.Join(sequenceBasePath, seriesPath, seriesID, seriesEntriesPath, se.ID)
+	return svc.client.put(ctx, p, se)
 }

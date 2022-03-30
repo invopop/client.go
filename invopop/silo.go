@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"path"
 	"strconv"
 
 	"github.com/invopop/gobl/dsig"
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	siloBasePath = "/silo/v1"
+	siloBasePath  = "/silo/v1"
+	envelopesPath = "envelopes"
 )
 
 // SiloService implements the Invopop Silo API.
@@ -57,7 +59,7 @@ type Attachment struct {
 // ListEnvelopes provides a list of the envelopes that belong to the user. Pagination is supported
 // using the EnvelopeCollections CreatedAt and NextCreatedAt parameters.
 func (svc *SiloService) ListEnvelopes(ctx context.Context, col *EnvelopeCollection) error {
-	path := siloBasePath + "/envelopes"
+	p := path.Join(siloBasePath, envelopesPath)
 	query := make(url.Values)
 	if col.Limit != 0 {
 		query.Add("limit", strconv.Itoa(int(col.Limit)))
@@ -66,18 +68,18 @@ func (svc *SiloService) ListEnvelopes(ctx context.Context, col *EnvelopeCollecti
 		query.Add("created_at", col.CreatedAt)
 	}
 	if len(query) > 0 {
-		path = path + "?" + query.Encode()
+		p = p + "?" + query.Encode()
 	}
-	return svc.client.get(ctx, path, col)
+	return svc.client.get(ctx, p, col)
 }
 
 // CreateEnvelope sends the provided Envelope objects `data` to the server for storage.
 // Only the `data` field and `ID` will be used.
 func (svc *SiloService) CreateEnvelope(ctx context.Context, e *Envelope) error {
-	return svc.client.put(ctx, siloBasePath+"/envelopes/"+e.ID, e)
+	return svc.client.put(ctx, path.Join(siloBasePath, envelopesPath, e.ID), e)
 }
 
 // FetchEnvelope updates the provided envelope instance with the results from the server.
 func (svc *SiloService) FetchEnvelope(ctx context.Context, e *Envelope) error {
-	return svc.client.get(ctx, siloBasePath+"/envelopes/"+e.ID, e)
+	return svc.client.get(ctx, path.Join(siloBasePath, envelopesPath, e.ID), e)
 }
