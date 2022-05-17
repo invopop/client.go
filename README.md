@@ -32,5 +32,5 @@ func main() {
 The Invopop API is split into individual namespaces, these are:
 
 - `Sequence` - used for generating sequential numbers or codes called `Series`.
-- `Transform` - used to configure `Connector`s and `Workflow`s that will be requested to be used when processing `Job`s.
-- `Silo` - for storing GOBL envelopes that will later processed by Jobs and whose connector results, if any, will also be stored in the silo service.
+- `Transform` - used to configure `Integration`s and `Workflow`s that will be requested to be used when processing `Job`s.
+- `Silo` - for storing GOBL envelopes ready to send to integrations via jobs whose output may be stored as attachments.

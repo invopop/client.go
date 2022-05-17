@@ -38,7 +38,7 @@ func (j *Job) Status() (bool, error) {
 	intent := j.Intents[len(j.Intents)-1]
 	event := intent.Events[len(intent.Events)-1]
 	if event.Status == "KO" {
-		return true, fmt.Errorf("Connector %s failed at %s: %s", intent.ConnectorID, event.At, event.Message)
+		return true, fmt.Errorf("Integration %s failed at %s: %s", intent.IntegrationID, event.At, event.Message)
 	}
 	return true, nil
 }
@@ -49,7 +49,7 @@ type JobIntent struct {
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 
-	ConnectorID string `json:"connector_id"`
+	IntegrationID string `json:"integration_id"`
 
 	Events []*JobIntentEvent `json:"events,omitempty"`
 
@@ -65,8 +65,8 @@ type JobIntentEvent struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Connector defines a specific objective that we would like Invopop to be able to perform.
-type Connector struct {
+// Integration defines a specific objective that we would like Invopop to be able to perform.
+type Integration struct {
 	ID        string `json:"id"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
@@ -80,15 +80,15 @@ type Connector struct {
 	Disabled bool `json:"disabled,omitempty"`
 }
 
-// ConnectorCollection contains a list of tasks.
-type ConnectorCollection struct {
-	List          []*Connector `json:"list"`
-	Limit         int32        `json:"limit"`
-	CreatedAt     string       `json:"created_at,omitempty"`
-	NextCreatedAt string       `json:"next_created_at,omitempty"`
+// IntegrationCollection contains a list of tasks.
+type IntegrationCollection struct {
+	List          []*Integration `json:"list"`
+	Limit         int32          `json:"limit"`
+	CreatedAt     string         `json:"created_at,omitempty"`
+	NextCreatedAt string         `json:"next_created_at,omitempty"`
 }
 
-// Workflow keeps together a list of connectors to execute when a job is requested.
+// Workflow keeps together a list of integrations to execute when a job is requested.
 type Workflow struct {
 	ID        string `json:"id"`
 	CreatedAt string `json:"created_at,omitempty"`
@@ -97,7 +97,7 @@ type Workflow struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 
-	ConnectorIDs []string `json:"connector_ids,omitempty"`
+	IntegrationIDs []string `json:"integration_ids,omitempty"`
 
 	Disabled bool `json:"disabled,omitempty"`
 }
