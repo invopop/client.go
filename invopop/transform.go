@@ -15,8 +15,8 @@ type Job struct {
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 
-	EnvelopeID string `json:"envelope_id,omitempty"`
-	WorkflowID string `json:"workflow_id"`
+	SiloEntryID string `json:"silo_entry_id,omitempty"`
+	WorkflowID  string `json:"workflow_id"`
 
 	Tags []string `json:"tags,omitempty"`
 

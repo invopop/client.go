@@ -22,7 +22,7 @@ func main() {
     ic := invopop.New(host, token)
 
     p := new(invopop.Ping)
-    if err := ic.Ping.Fetch(ctx, p); err != nil {
+    if err := ic.Utils().Ping(ctx, p); err != nil {
         panic(err.Error())
     }
     fmt.Printf("%v\n", p)
@@ -31,6 +31,7 @@ func main() {
 
 The Invopop API is split into individual namespaces, these are:
 
+- `Utils` - for ensuring you can connect correctly with the Invopop servers and your credentials are correct.
 - `Sequence` - used for generating sequential numbers or codes called `Series`.
 - `Transform` - used to configure `Integration`s and `Workflow`s that will be requested to be used when processing `Job`s.
 - `Silo` - for storing GOBL envelopes ready to send to integrations via jobs whose output may be stored as attachments.
