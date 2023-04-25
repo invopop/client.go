@@ -1,3 +1,4 @@
+// Package invopop provides wrappers around the Invopop API
 package invopop
 
 import (
