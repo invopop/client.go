@@ -10,7 +10,7 @@ const integrationsPath = "integrations"
 // CreateIntegration sends a request to the API to create a new integration.
 func (svc *TransformService) CreateIntegration(ctx context.Context, m *Integration) error {
 	p := path.Join(transformBasePath, integrationsPath, m.ID)
-	return svc.client.put(ctx, p, m)
+	return svc.client.put(ctx, p, m, m)
 }
 
 // ListIntegrations prepares a pageable list of integrations that belong to the requester.

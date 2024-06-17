@@ -88,7 +88,13 @@ func (svc *SiloService) ListEntries(ctx context.Context, col *EntryCollection) e
 // CreateEntry sends the provided Entry objects `data` to the server for storage.
 // Only the `data` field and `ID` will be used.
 func (svc *SiloService) CreateEntry(ctx context.Context, e *Entry) error {
-	return svc.client.put(ctx, path.Join(siloBasePath, entriesPath, e.ID), e)
+	return svc.client.put(ctx, path.Join(siloBasePath, entriesPath, e.ID), e, e)
+}
+
+// UpdateEntry sends the provided Entry object `data` to the server for storage,
+// updating the existing envelope.
+func (svc *SiloService) UpdateEntry(ctx context.Context, e *Entry) error {
+	return svc.client.patch(ctx, path.Join(siloBasePath, entriesPath, e.ID), e, e)
 }
 
 // FetchEnvelope updates the provided envelope instance with the results from the server.

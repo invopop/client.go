@@ -16,7 +16,7 @@ func (svc *TransformService) CreateJob(ctx context.Context, m *Job, opts ...Requ
 	if ro.wait > 0 {
 		p = fmt.Sprintf("%s?wait=%d", p, ro.wait)
 	}
-	return svc.client.put(ctx, p, m)
+	return svc.client.put(ctx, p, m, m)
 }
 
 // FetchJob fetches the latest job results. As with `CreateJob`, if the `WithWait` requestion

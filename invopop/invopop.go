@@ -18,7 +18,12 @@ type Client struct {
 	sequence  *SequenceService
 	transform *TransformService
 	silo      *SiloService
+	access    *AccessService
 }
+
+const (
+	productionHost = "https://api.invopop.com"
+)
 
 // Utils provides access to the utils service.
 func (c *Client) Utils() *UtilsService {
@@ -40,6 +45,11 @@ func (c *Client) Silo() *SiloService {
 	return c.silo
 }
 
+// Access provides a client to the access resources.
+func (c *Client) Access() *AccessService {
+	return c.access
+}
+
 type requestOptions struct {
 	wait int
 }
@@ -52,23 +62,34 @@ type service struct {
 }
 
 // New returns a new Invopop API client.
-func New(host, token string) *Client {
+func New() *Client {
 	c := new(Client)
 
 	c.conn = resty.New().
-		SetHostURL(host).
-		SetAuthToken(token)
+		SetBaseURL(productionHost)
 
-	var common service // Reuse a single struct instead of allocating one for each service on the heap.
-
+	// Reuse a single struct instead of allocating one for each service on the heap.
+	common := new(service)
 	common.client = c
 
-	c.utils = (*UtilsService)(&common)
-	c.sequence = (*SequenceService)(&common)
-	c.transform = (*TransformService)(&common)
-	c.silo = (*SiloService)(&common)
+	c.utils = (*UtilsService)(common)
+	c.sequence = (*SequenceService)(common)
+	c.transform = (*TransformService)(common)
+	c.silo = (*SiloService)(common)
+	c.access = newAccessService(common)
 
 	return c
+}
+
+// SetBaseURL can be used to override the default base URL for the client. This is
+// useful for testing the client against a local or staging server.
+func (c *Client) SetBaseURL(url string) {
+	c.conn = c.conn.SetBaseURL(url)
+}
+
+// SetAuthToken updates the client connection's auth token.
+func (c *Client) SetAuthToken(token string) {
+	c.conn = c.conn.SetAuthToken(token)
 }
 
 func (c *Client) get(ctx context.Context, path string, body interface{}) error {
@@ -84,14 +105,42 @@ func (c *Client) get(ctx context.Context, path string, body interface{}) error {
 	return re.handle(res)
 }
 
-func (c *Client) put(ctx context.Context, path string, body interface{}) error {
+func (c *Client) post(ctx context.Context, path string, in, out any) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().
 		SetContext(ctx).
-		SetBody(body).
+		SetBody(in).
 		SetError(re).
-		SetResult(body).
+		SetResult(out).
 		Put(path)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
+}
+
+func (c *Client) put(ctx context.Context, path string, in, out any) error {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetBody(in).
+		SetError(re).
+		SetResult(out).
+		Put(path)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
+}
+
+func (c *Client) patch(ctx context.Context, path string, in, out any) error {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetBody(in).
+		SetError(re).
+		SetResult(out).
+		Patch(path)
 	if err != nil {
 		return err
 	}
@@ -159,20 +208,23 @@ func (r *ResponseError) Response() *resty.Response {
 // IsConflict is a helper that will provide the response error object
 // if the error is a conflict.
 func IsConflict(err error) *ResponseError {
-	var re *ResponseError
-	if errors.As(err, &re) {
-		if re.StatusCode() == http.StatusConflict {
-			return re
-		}
-	}
-	return nil
+	return isError(err, http.StatusConflict)
 }
 
 // IsNotFound returns the error response if the status is not found.
 func IsNotFound(err error) *ResponseError {
+	return isError(err, http.StatusNotFound)
+}
+
+// IsForbidden returns the error response if the status is forbidden.
+func IsForbidden(err error) *ResponseError {
+	return isError(err, http.StatusForbidden)
+}
+
+func isError(err error, status int) *ResponseError {
 	var re *ResponseError
 	if errors.As(err, &re) {
-		if re.StatusCode() == http.StatusNotFound {
+		if re.StatusCode() == status {
 			return re
 		}
 	}
