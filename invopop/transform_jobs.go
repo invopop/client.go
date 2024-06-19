@@ -11,7 +11,7 @@ const jobsPath = "jobs"
 // JobsService provides endpoints for dealing with jobs.
 type JobsService service
 
-// CreateJob sends a request to the API to process a job. The `WithWait` request option can
+// Create sends a request to the API to process a job. The `WithWait` request option can
 // be used to have the server wait for a job to be completed before responding.
 func (svc *JobsService) Create(ctx context.Context, m *Job, opts ...RequestOption) error {
 	ro := handleOptions(opts)
