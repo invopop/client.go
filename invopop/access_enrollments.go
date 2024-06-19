@@ -3,14 +3,17 @@ package invopop
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"path"
 )
 
 const (
 	enrollmentPath = "/enrollment"
+	authorizePath  = "authorize"
 )
 
-// EnrollmentService helps manage access to enrollments
+// EnrollmentService helps manage access to a single enrollment
+// that is associated between the app and the "owner" of the workspace.
 type EnrollmentService service
 
 // Enrollment represents an enrollment in the system.
@@ -29,57 +32,46 @@ type Enrollment struct {
 	Token string `json:"token" title:"Token" description:"A token that may be used to authenticate the enrollment with API operations."`
 }
 
-// AuthorizeEnrollment defines the payload required to authorize an app using its client credentials
-// and receive a token that can be used for subsequent requests.
-type AuthorizeEnrollment struct {
+type authorizeEnrollment struct {
 	OwnerID      string `json:"owner_id,omitempty" title:"Owner ID" description:"The ID of the entity that owns the enrollment. It is essential this is provided from a trusted source or an auth token is provided in the headers." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	ClientID     string `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"01900e17-db4d-78a5-8505-c93ae63e8a0d"`
 	ClientSecret string `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"01900e17-db4d-78a5-8505-c93ae63e8a0d"`
 }
 
-// UpdateEnrollment is used by applications to update the enrollment's embedded data.
-type UpdateEnrollment struct {
+type updateEnrollment struct {
 	Data json.RawMessage `param:"data" title:"Data" description:"Additional data associated with the enrollment." example:"{\"key\":\"value\"}"`
 }
 
-// Authorize tries to provide an Enrollment object with an embedded token to use
-// for subsequent requests to the API. This method will automatically update the
-// the client's token if successful so that the same client can be re-used for all
-// subsequent calls to the API.
-func (s *EnrollmentService) Authorize(ctx context.Context, req *AuthorizeEnrollment) (*Enrollment, error) {
-	p := path.Join(accessBasePath, enrollmentPath, "authorize")
-	e := new(Enrollment)
-	if err := s.client.post(ctx, p, req, e); err != nil {
-		return nil, err
+// Authorize tries to update the Enrollment object with an embedded token to use
+// for subsequent requests to the API.
+//
+// OAuth credentials must have been configured in the client for this to work, and
+// will be used alongside regular token authentication to ensure the client has
+// the necessary permissions to generate the enrollment token.
+func (s *EnrollmentService) Authorize(ctx context.Context, e *Enrollment) error {
+	p := path.Join(accessBasePath, enrollmentPath, authorizePath)
+	if s.client.clientID == "" || s.client.clientSecret == "" {
+		return errors.New("missing OAuth client credentials: client_id and client_secret")
 	}
-	s.updateAuthToken(e)
-	return e, nil
+	req := &authorizeEnrollment{
+		OwnerID:      e.OwnerID, // may be empty if intention is to use token
+		ClientID:     s.client.clientID,
+		ClientSecret: s.client.clientSecret,
+	}
+	return s.client.post(ctx, p, req, e)
 }
 
 // Fetch retrieves an enrollment associated with the current authentication token.
-func (s *EnrollmentService) Fetch(ctx context.Context) (*Enrollment, error) {
+func (s *EnrollmentService) Fetch(ctx context.Context, e *Enrollment) error {
 	p := path.Join(accessBasePath, enrollmentPath)
-	e := new(Enrollment)
-	if err := s.client.get(ctx, p, e); err != nil {
-		return nil, err
-	}
-	s.updateAuthToken(e)
-	return e, nil
+	return s.client.get(ctx, p, e)
 }
 
-// Update allows applications to update the enrollment's embedded data.
-func (s *EnrollmentService) Update(ctx context.Context, req *UpdateEnrollment) (*Enrollment, error) {
+// Update allows applications to update their enrollment's embedded data.
+func (s *EnrollmentService) Update(ctx context.Context, e *Enrollment) error {
 	p := path.Join(accessBasePath, enrollmentPath)
-	e := new(Enrollment)
-	if err := s.client.post(ctx, p, req, e); err != nil {
-		return nil, err
+	req := &updateEnrollment{
+		Data: e.Data,
 	}
-	s.updateAuthToken(e)
-	return e, nil
-}
-
-func (s *EnrollmentService) updateAuthToken(e *Enrollment) {
-	if e.Token != "" {
-		s.client.SetAuthToken(e.Token)
-	}
+	return s.client.post(ctx, p, req, e)
 }

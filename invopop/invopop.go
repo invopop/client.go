@@ -14,11 +14,12 @@ import (
 type Client struct {
 	conn *resty.Client
 
-	utils     *UtilsService
-	sequence  *SequenceService
-	transform *TransformService
-	silo      *SiloService
-	access    *AccessService
+	// OAuth credentials which may have been configured	and
+	// will only be used if needed by specific endpoints.
+	clientID     string
+	clientSecret string
+
+	svc *service
 }
 
 const (
@@ -27,28 +28,31 @@ const (
 
 // Utils provides access to the utils service.
 func (c *Client) Utils() *UtilsService {
-	return c.utils
+	return (*UtilsService)(c.svc)
 }
 
 // Sequence provides access to the sequence service.
 func (c *Client) Sequence() *SequenceService {
-	return c.sequence
+	return (*SequenceService)(c.svc)
 }
 
 // Transform provides access to the transform service.
 func (c *Client) Transform() *TransformService {
-	return c.transform
+	return (*TransformService)(c.svc)
 }
 
 // Silo provides access to the silo service.
 func (c *Client) Silo() *SiloService {
-	return c.silo
+	return (*SiloService)(c.svc)
 }
 
 // Access provides a client to the access resources.
 func (c *Client) Access() *AccessService {
-	return c.access
+	return (*AccessService)(c.svc)
 }
+
+// ClientOption defines options when initializing a client.
+type ClientOption func(c *Client)
 
 type requestOptions struct {
 	wait int
@@ -62,34 +66,65 @@ type service struct {
 }
 
 // New returns a new Invopop API client.
-func New() *Client {
+func New(opts ...ClientOption) *Client {
 	c := new(Client)
 
 	c.conn = resty.New().
 		SetBaseURL(productionHost)
 
-	// Reuse a single struct instead of allocating one for each service on the heap.
-	common := new(service)
-	common.client = c
+	for _, opt := range opts {
+		opt(c)
+	}
 
-	c.utils = (*UtilsService)(common)
-	c.sequence = (*SequenceService)(common)
-	c.transform = (*TransformService)(common)
-	c.silo = (*SiloService)(common)
-	c.access = newAccessService(common)
+	// Reuse a single struct instead of allocating one for each service on the heap.
+	c.svc = new(service)
+	c.svc.client = c
 
 	return c
 }
 
-// SetBaseURL can be used to override the default base URL for the client. This is
-// useful for testing the client against a local or staging server.
-func (c *Client) SetBaseURL(url string) {
-	c.conn = c.conn.SetBaseURL(url)
+// WithConfig will use the provided configuration to set up the client.
+func WithConfig(conf *Config) ClientOption {
+	return func(c *Client) {
+		if conf.BaseURL != "" {
+			c.conn = c.conn.SetBaseURL(conf.BaseURL)
+		}
+		if conf.ClientID != "" {
+			c.clientID = conf.ClientID
+		}
+		if conf.ClientSecret != "" {
+			c.clientSecret = conf.ClientSecret
+		}
+	}
 }
 
-// SetAuthToken updates the client connection's auth token.
-func (c *Client) SetAuthToken(token string) {
-	c.conn = c.conn.SetAuthToken(token)
+// WithAuthToken can be used to set the authentication token
+// for the API Key to use with the API.
+func WithAuthToken(token string) ClientOption {
+	return func(c *Client) {
+		c.conn = c.conn.SetAuthToken(token)
+	}
+}
+
+// WithOAuthClient can be used to configure the OAuth client ID and secret
+// which is useful for applications registered with Invopop.
+func WithOAuthClient(id, secret string) ClientOption {
+	return func(c *Client) {
+		c.clientID = id
+		c.clientSecret = secret
+	}
+}
+
+// SetAuthToken will set the authentication token inside a
+// new client instance. This is useful for dealing with multiple
+// connections that don't necessarily share the same token, such
+// as when building apps that use enrollments to authenticate
+// sessions.
+func (c *Client) SetAuthToken(token string) *Client {
+	c2 := *c
+	c2.conn = c2.conn.SetAuthToken(token)
+	c2.svc = &service{client: &c2}
+	return &c2
 }
 
 func (c *Client) get(ctx context.Context, path string, body interface{}) error {
@@ -112,7 +147,7 @@ func (c *Client) post(ctx context.Context, path string, in, out any) error {
 		SetBody(in).
 		SetError(re).
 		SetResult(out).
-		Put(path)
+		Post(path)
 	if err != nil {
 		return err
 	}

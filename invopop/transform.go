@@ -38,7 +38,7 @@ func (j *Job) Status() (bool, error) {
 	intent := j.Intents[len(j.Intents)-1]
 	event := intent.Events[len(intent.Events)-1]
 	if event.Status == "KO" {
-		return true, fmt.Errorf("Integration %s failed at %s: %s", intent.IntegrationID, event.At, event.Message)
+		return true, fmt.Errorf("step %s failed at %s: %s", intent.StepID, event.At, event.Message)
 	}
 	return true, nil
 }
@@ -49,7 +49,9 @@ type JobIntent struct {
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 
-	IntegrationID string `json:"integration_id"`
+	StepID   string `json:"step_id" title:"Step ID" description:"ID of the step to use" example:"8d49556b-ff63-477b-9cd3-32c986c1c77b"`
+	Name     string `json:"name" title:"Name" description:"Name of the executed workflow step" example:"PDF Generation"`
+	Provider string `json:"provider" title:"Provider" description:"ID of the provider to use" example:"pdf"`
 
 	Events []*JobIntentEvent `json:"events,omitempty"`
 
@@ -65,41 +67,38 @@ type JobIntentEvent struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Integration defines a specific objective that we would like Invopop to be able to perform.
-type Integration struct {
-	ID        string `json:"id"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
-
-	Name  string `json:"name"`
-	Notes string `json:"notes,omitempty"`
-
-	Provider string          `json:"provider,omitempty"`
-	Config   json.RawMessage `json:"config,omitempty"`
-
-	Disabled bool `json:"disabled,omitempty"`
-}
-
-// IntegrationCollection contains a list of tasks.
-type IntegrationCollection struct {
-	List          []*Integration `json:"list"`
-	Limit         int32          `json:"limit"`
-	CreatedAt     string         `json:"created_at,omitempty"`
-	NextCreatedAt string         `json:"next_created_at,omitempty"`
-}
-
 // Workflow keeps together a list of integrations to execute when a job is requested.
 type Workflow struct {
 	ID        string `json:"id"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"name" title:"Name" description:"Name of the workflow"`
+	Description string `json:"description,omitempty" title:"Description" description:"Description of the workflow"`
+	Schema      string `json:"schema,omitempty" title:"Schema" description:"Short schema name that the workflow will be allowed to process."`
+	Country     string `json:"country,omitempty" title:"Country" description:"ISO country code the workflow will be used for."`
+	Version     string `json:"version,omitempty" title:"Version" description:"Version of the workflow's contents currently defined."`
 
-	IntegrationIDs []string `json:"integration_ids,omitempty"`
+	Steps []*Step `json:"steps" title:"Steps" description:"List of steps to execute"`
 
 	Disabled bool `json:"disabled,omitempty"`
+}
+
+// Step represents a single action inside a workflow
+type Step struct {
+	ID       string          `json:"id" title:"ID" description:"The UUID (any version) of the step." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	Name     string          `json:"name" title:"Name" description:"Name of the step"`
+	Provider string          `json:"provider" title:"Provider" description:"ID of the provider to use" example:"provider"`
+	Notes    string          `json:"notes,omitempty" title:"Notes" description:"Additional internal details"`
+	Config   json.RawMessage `json:"config,omitempty" title:"Configuration" description:"JSON configuration sent to the provider"`
+	Next     []*Next         `json:"next,omitempty" title:"Next" description:"Optional array of next steps to execute after this one."`
+}
+
+// Next describes a next step to execute in a workflow.
+type Next struct {
+	Status string `json:"status,omitempty" title:"Status" description:"Step status to match against, when empty this next step will always be executed." enum:"OK,SKIP,KO,TIMEOUT"`
+	StepID string `json:"step_id,omitempty" title:"Step ID" description:"ID of the step to execute next." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	Stop   bool   `json:"stop,omitempty" title:"Stop" description:"When true, the workflow will stop after completing this step."`
 }
 
 // WorkflowCollection contains a list of workflows.
@@ -111,3 +110,13 @@ type WorkflowCollection struct {
 
 // TransformService provides access to the transform API end points.
 type TransformService service
+
+// Jobs provides the service to manage jobs.
+func (svc *TransformService) Jobs() *JobsService {
+	return (*JobsService)(svc)
+}
+
+// Workflows provides the service to manage workflows.
+func (svc *TransformService) Workflows() *WorkflowsService {
+	return (*WorkflowsService)(svc)
+}
