@@ -42,7 +42,7 @@ func Test_put(t *testing.T) {
 			c := &Client{
 				conn: resty.NewWithClient(testy.HTTPClient(tt.responder)),
 			}
-			err := c.put(context.Background(), tt.path, tt.body)
+			err := c.put(context.Background(), tt.path, tt.body, tt.body)
 			assert.EqualError(t, err, tt.err)
 		})
 	}

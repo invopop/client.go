@@ -52,11 +52,11 @@ func (svc *SequenceService) ListSeries(ctx context.Context, sc *SeriesCollection
 // CreateSeries will create the series.
 func (svc *SequenceService) CreateSeries(ctx context.Context, s *Series) error {
 	p := path.Join(sequenceBasePath, seriesPath, s.ID)
-	return svc.client.put(ctx, p, s)
+	return svc.client.put(ctx, p, s, s)
 }
 
 // CreateEntry will send a request to create a new series entry.
 func (svc *SequenceService) CreateEntry(ctx context.Context, seriesID string, se *SeriesEntry) error {
 	p := path.Join(sequenceBasePath, seriesPath, seriesID, seriesEntriesPath, se.ID)
-	return svc.client.put(ctx, p, se)
+	return svc.client.put(ctx, p, se, se)
 }

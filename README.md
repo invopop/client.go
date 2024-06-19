@@ -17,9 +17,9 @@ import (
 
 func main() {
     ctx := context.Background()
-    host, _ := os.Getenv("INVOPOP_HOST")
     token, _ := os.Getenv("INVOPOP_TOKEN")
-    ic := invopop.New(host, token)
+    ic := invopop.New()
+    ic.SetAuthToken(token)
 
     p := new(invopop.Ping)
     if err := ic.Utils().Ping(ctx, p); err != nil {
@@ -35,3 +35,4 @@ The Invopop API is split into individual namespaces, these are:
 - `Sequence` - used for generating sequential numbers or codes called `Series`.
 - `Transform` - used to configure `Integration`s and `Workflow`s that will be requested to be used when processing `Job`s.
 - `Silo` - for storing GOBL envelopes ready to send to integrations via jobs whose output may be stored as attachments.
+- `Access` - mostly used by apps to get access tokens and manage enrollment data.
