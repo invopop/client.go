@@ -75,9 +75,9 @@ type UpdateWorkflow struct {
 }
 
 // Fetch makes a request for the workflow by its ID.
-func (sv *WorkflowsService) Fetch(ctx context.Context, id string) (*Workflow, error) {
+func (svc *WorkflowsService) Fetch(ctx context.Context, id string) (*Workflow, error) {
 	m := new(Workflow)
-	return m, sv.client.get(ctx, path.Join(transformBasePath, workflowsPath, id), m)
+	return m, svc.client.get(ctx, path.Join(transformBasePath, workflowsPath, id), m)
 }
 
 // Create sends a request to the API to create a new Workflow.

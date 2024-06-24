@@ -13,6 +13,7 @@ import (
 const (
 	enrollmentKey      = "enrollment"
 	enrollmentStateKey = "state"
+	invopopClientKey   = "invopop-client"
 )
 
 // AuthEnrollment defines a middleware function that will authenticate
@@ -55,6 +56,7 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 				return err
 			}
 			c.Set(enrollmentKey, e)
+			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
 
 			return next(c)
 		}
@@ -65,4 +67,10 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
 	return c.Get(enrollmentKey).(*invopop.Enrollment)
+}
+
+// GetClient provides the Invopop client that was prepared with
+// the enrollment's auth token.
+func GetClient(c echo.Context) *invopop.Client {
+	return c.Get(invopopClientKey).(*invopop.Client)
 }

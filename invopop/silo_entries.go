@@ -83,14 +83,14 @@ type CreateSiloEntry struct {
 	AllowInvalid bool            `json:"allow_invalid,omitempty" title:"Allow Invalid" description:"When true, the envelope's contents are allowed to be invalid. Only applied for enrolled applications." example:"true"`
 }
 
-// UpdateEntry allows for a silo document to be updated under certain conditions.
+// UpdateSiloEntry allows for a silo document to be updated under certain conditions.
 type UpdateSiloEntry struct {
 	ID     string          `json:"-"`
 	Folder string          `json:"folder,omitempty" title:"Folder" description:"New location for the silo entry." example:"drafts"`
 	Data   json.RawMessage `json:"data" title:"Data" description:"Updated envelope data. New document contents will only be accepted if the existing envelope data is still a draft."`
 }
 
-// FindEntries is used to list entries ordered by date.
+// FindSiloEntries is used to list entries ordered by date.
 type FindSiloEntries struct {
 	Folder    string `query:"folder" title:"Folder" description:"Folder to search within." example:"invoices"`
 	CreatedAt string `query:"created_at" title:"Created At" description:"Date from which results are provided." example:"2023-08-02T00:00:00.000Z"`

@@ -22,8 +22,11 @@ type Client struct {
 	svc *service
 }
 
+type invopopClientKey string
+
 const (
-	productionHost = "https://api.invopop.com"
+	productionHost                  = "https://api.invopop.com"
+	clientKey      invopopClientKey = "invopop-client"
 )
 
 // Utils provides access to the utils service.
@@ -118,6 +121,24 @@ func (c *Client) SetAuthToken(token string) *Client {
 	c2.conn = c2.conn.SetAuthToken(token)
 	c2.svc = &service{client: &c2}
 	return &c2
+}
+
+// Context adds the current client model to the context so that it can be
+// easily re-used inside other parts of the application. Use this sparingly,
+// ideally you want to be passing the client directly, but given that a client
+// may have an auth token for each connection, using the context can be
+// a lot more convenient.
+func (c *Client) Context(ctx context.Context) context.Context {
+	return context.WithValue(ctx, clientKey, c)
+}
+
+// GetClient tries to extract a client object from the context.
+func GetClient(ctx context.Context) *Client {
+	c, ok := ctx.Value(clientKey).(*Client)
+	if !ok {
+		return nil
+	}
+	return c
 }
 
 func (c *Client) get(ctx context.Context, path string, body interface{}) error {

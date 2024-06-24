@@ -30,7 +30,7 @@ type SiloMeta struct {
 	LinkScope string          `json:"link_scope,omitempty" title:"Link Scope" description:"Describes the context in which the link should be made available." example:"public"`
 }
 
-// UpsertMeta is to update or create a new meta row for an entry.
+// UpsertSiloMeta is to update or create a new meta row for an entry.
 type UpsertSiloMeta struct {
 	EntryID   string          `json:"-"`
 	Key       string          `json:"-"`

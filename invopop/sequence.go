@@ -61,7 +61,7 @@ type CreateSeriesEntry struct {
 	Sig  string            `json:"sig,omitempty" title:"Signature" description:"JSON Web Signature of the key properties used to create the entry."`
 }
 
-// ListSeries will populate the series collection with the series that match the
+// List will populate the series collection with the series that match the
 // conditions, if any.
 func (svc *SequenceService) List(ctx context.Context) (*SeriesCollection, error) {
 	p := path.Join(sequenceBasePath, seriesPath)
@@ -76,7 +76,7 @@ func (svc *SequenceService) Fetch(ctx context.Context, id string) (*Series, erro
 	return m, svc.client.get(ctx, p, m)
 }
 
-// CreateSeries will create the series.
+// Create will create the series.
 func (svc *SequenceService) Create(ctx context.Context, req *CreateSeries) (*Series, error) {
 	p := path.Join(sequenceBasePath, seriesPath, req.ID)
 	m := new(Series)
