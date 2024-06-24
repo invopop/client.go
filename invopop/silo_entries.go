@@ -7,6 +7,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/invopop/gobl"
 	"github.com/invopop/gobl/dsig"
 )
 
@@ -138,4 +139,13 @@ func (svc *SiloEntriesService) Create(ctx context.Context, req *CreateSiloEntry)
 func (svc *SiloEntriesService) Update(ctx context.Context, req *UpdateSiloEntry) (*SiloEntry, error) {
 	e := new(SiloEntry)
 	return e, svc.client.patch(ctx, path.Join(siloBasePath, entriesPath, req.ID), req, e)
+}
+
+// Envelope provides the silo entry's data as a GOBL envelope.
+func (se *SiloEntry) Envelope() (*gobl.Envelope, error) {
+	env := new(gobl.Envelope)
+	if err := json.Unmarshal(se.Data, env); err != nil {
+		return nil, err
+	}
+	return env, nil
 }
