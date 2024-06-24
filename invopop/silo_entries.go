@@ -7,6 +7,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/invopop/client.go/pkg/snippets"
 	"github.com/invopop/gobl"
 	"github.com/invopop/gobl/dsig"
 )
@@ -35,7 +36,7 @@ type SiloEntry struct {
 	Tags      []string     `json:"tags,omitempty" title:"Tags" x-order:"8"`
 	Context   string       `json:"context,omitempty" title:"Context" description:"When entry provided within a related query, this is the context within the document." example:"line.item"`
 
-	Snippet json.RawMessage `json:"snippet,omitempty"`
+	SnippetData json.RawMessage `json:"snippet,omitempty"`
 
 	Attachments []*SiloAttachment `json:"attachments,omitempty"`
 	Data        json.RawMessage   `json:"data,omitempty"` // may not always be available
@@ -148,4 +149,9 @@ func (se *SiloEntry) Envelope() (*gobl.Envelope, error) {
 		return nil, err
 	}
 	return env, nil
+}
+
+// Snippet provides the silo entries snippet data in a structured format.
+func (se *SiloEntry) Snippet() any {
+	return snippets.Parse(se.DocSchema, se.SnippetData)
 }
