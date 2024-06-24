@@ -54,13 +54,6 @@ func (c *Client) Access() *AccessService {
 // ClientOption defines options when initializing a client.
 type ClientOption func(c *Client)
 
-type requestOptions struct {
-	wait int
-}
-
-// RequestOption is used to define options for the request.
-type RequestOption func(o *requestOptions)
-
 type service struct {
 	client *Client
 }
@@ -180,22 +173,6 @@ func (c *Client) patch(ctx context.Context, path string, in, out any) error {
 		return err
 	}
 	return re.handle(res)
-}
-
-// WithWait adds a wait parameter to the query where it is supported. Typically
-// this is used with job requests that may take longer to respond.
-func WithWait(t int) RequestOption {
-	return func(o *requestOptions) {
-		o.wait = t
-	}
-}
-
-func handleOptions(opts []RequestOption) *requestOptions {
-	ro := new(requestOptions)
-	for _, o := range opts {
-		o(ro)
-	}
-	return ro
 }
 
 // ResponseError is a wrapper around error responses from the server that will handle
