@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package invopop.gateway.v1;
+option go_package = "./;gateway";
+
+// ErrorCode defines a basic list of recognised error codes.
+enum ErrorCode {
+    INTERNAL = 0;
+    INVALID = 1;
+    NOT_FOUND = 2; // The requested resource was not found.
+}
+
+// Error is a generic error response for the API.
+message Error {
+    ErrorCode code = 1;
+    string message = 2;
+}
