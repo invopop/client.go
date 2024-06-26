@@ -35,9 +35,10 @@ type Enrollment struct {
 // authorizeEnrollment is used internally to describe the fields required to confirm
 // that an app has access to the enrollment details for the Owner.
 type authorizeEnrollment struct {
+	ID           string `json:"id,omitempty" title:"ID" description:"Enrollment ID to use when the owner ID is not available" example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	OwnerID      string `json:"owner_id,omitempty" title:"Owner ID" description:"The ID of the entity that owns the enrollment. It is essential this is provided from a trusted source or an auth token is provided in the headers." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
-	ClientID     string `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"01900e17-db4d-78a5-8505-c93ae63e8a0d"`
-	ClientSecret string `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"01900e17-db4d-78a5-8505-c93ae63e8a0d"`
+	ClientID     string `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"CvI6CIygjGP10g"`
+	ClientSecret string `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"YSKIfGaUrEdDFK_NPGO-Yj1oVDJcjV15N4hHbuAEg2c"`
 }
 
 // UpdateEnrollment defines the request body for updating an enrollment.
@@ -53,6 +54,22 @@ type UpdateEnrollment struct {
 // the necessary permissions to generate the enrollment token.
 func (s *EnrollmentService) Authorize(ctx context.Context) (*Enrollment, error) {
 	return s.AuthorizeWithOwnerID(ctx, "")
+}
+
+// AuthorizeWithID will make a request to load the enrollment using the app credentials
+// and a specific enrollment ID. This is useful when the owner ID is not available.
+func (s *EnrollmentService) AuthorizeWithID(ctx context.Context, id string) (*Enrollment, error) {
+	p := path.Join(accessBasePath, enrollmentPath, authorizePath)
+	if s.client.clientID == "" || s.client.clientSecret == "" {
+		return nil, errors.New("missing OAuth client credentials: client_id and client_secret")
+	}
+	req := &authorizeEnrollment{
+		ID:           id,
+		ClientID:     s.client.clientID,
+		ClientSecret: s.client.clientSecret,
+	}
+	e := new(Enrollment)
+	return e, s.client.post(ctx, p, req, e)
 }
 
 // AuthorizeWithOwnerID allows applications to authorize an enrollment with a specific owner ID.
