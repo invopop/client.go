@@ -25,6 +25,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultWorkerCount = 8
+)
+
 // Client wraps around the functionality provided by the
 // the gateway service, accessed via NATS.
 type Client struct {
@@ -44,6 +48,9 @@ func New(conf Configuration) *Client {
 	gconf := conf.config()
 
 	gw.workerCount = gconf.WorkerCount
+	if gw.workerCount == 0 {
+		gw.workerCount = defaultWorkerCount
+	}
 	gw.name = gconf.Name
 	gw.nc = prepareNATSClient(gconf.NATS, gconf.Name)
 	gw.incoming = make(chan *nats.Msg)
