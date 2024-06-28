@@ -118,7 +118,7 @@ func WithOAuthClient(id, secret string) ClientOption {
 // sessions.
 func (c *Client) SetAuthToken(token string) *Client {
 	c2 := *c
-	c2.conn = c2.conn.SetAuthToken(token)
+	c2.conn = c2.conn.Clone().SetAuthToken(token)
 	c2.svc = &service{client: &c2}
 	return &c2
 }
