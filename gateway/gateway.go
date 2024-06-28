@@ -25,9 +25,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Gateway wraps around the functionality provided by the
+// Client wraps around the functionality provided by the
 // the gateway service, accessed via NATS.
-type Gateway struct {
+type Client struct {
 	name              string // service name
 	nc                *nats.EncodedConn
 	wg                sync.WaitGroup
@@ -38,9 +38,9 @@ type Gateway struct {
 	workerCount       int
 }
 
-// New instantiates a new gateway service using the provided config.
-func New(conf Configuration) *Gateway {
-	gw := new(Gateway)
+// New instantiates a new gateway client service using the provided config.
+func New(conf Configuration) *Client {
+	gw := new(Client)
 	gconf := conf.config()
 
 	gw.workerCount = gconf.WorkerCount
@@ -57,19 +57,19 @@ func New(conf Configuration) *Gateway {
 
 // NATS provides the NATS Encoded Connection so that it can be used
 // for other tasks if needed.
-func (gw *Gateway) NATS() *nats.EncodedConn {
+func (gw *Client) NATS() *nats.EncodedConn {
 	return gw.nc
 }
 
 // Subscribe indicates which method should be called when
 // messages are received from the gateway service.
-func (gw *Gateway) Subscribe(th TaskHandler) {
+func (gw *Client) Subscribe(th TaskHandler) {
 	gw.th = th
 }
 
-// Poke sends a message to the Gateway indicating that we've received an
+// Poke sends a message to the gateway indicating that we've received an
 // external prompt, like a webhook, and the original task should be re-sent.
-func (gw *Gateway) Poke(ctx context.Context, req *TaskPoke) error {
+func (gw *Client) Poke(ctx context.Context, req *TaskPoke) error {
 	res := new(TaskPokeResponse)
 	if err := gw.nc.RequestWithContext(ctx, SubjectTasksPoke, req, res); err != nil {
 		return err
@@ -83,7 +83,7 @@ func (gw *Gateway) Poke(ctx context.Context, req *TaskPoke) error {
 
 // CreateFile allows us to build a file place holder and upload the data afterwards
 // by posting to the URL provided.
-func (gw *Gateway) CreateFile(ctx context.Context, req *CreateFile) (*File, error) {
+func (gw *Client) CreateFile(ctx context.Context, req *CreateFile) (*File, error) {
 	res := new(FileResponse)
 	if err := gw.nc.RequestWithContext(ctx, SubjectFilesCreate, req, res); err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (gw *Gateway) CreateFile(ctx context.Context, req *CreateFile) (*File, erro
 // SHA256, MIME, and Size attributes based on the provided data.
 // The tradeoff here as opposed to two separate calls is that the data is kept
 // in memory and not sent through a buffer.
-func (gw *Gateway) CreateAndUploadFile(ctx context.Context, req *CreateFile, data []byte) (*File, error) {
+func (gw *Client) CreateAndUploadFile(ctx context.Context, req *CreateFile, data []byte) (*File, error) {
 	gw.prepareCreateFileFromData(req, data)
 
 	f, err := gw.CreateFile(ctx, req)
@@ -118,7 +118,7 @@ func (gw *Gateway) CreateAndUploadFile(ctx context.Context, req *CreateFile, dat
 // UploadFile performs an HTTP PUT action to send the data to the silo. The URL comes
 // from the file object. Provided the SHA256 data matches, the file uploaded will
 // function as expected.
-func (gw *Gateway) UploadFile(ctx context.Context, f *File, data io.Reader) error {
+func (gw *Client) UploadFile(ctx context.Context, f *File, data io.Reader) error {
 	url, err := gw.fileUploadURL(f)
 	if err != nil {
 		return fmt.Errorf("upload url: %w", err)
@@ -142,7 +142,7 @@ func (gw *Gateway) UploadFile(ctx context.Context, f *File, data io.Reader) erro
 
 // FetchFile performs an HTTP GET action to retrieve a file's data from the
 // silo. The URL comes from the file object.
-func (gw *Gateway) FetchFile(ctx context.Context, f *File) ([]byte, error) {
+func (gw *Client) FetchFile(ctx context.Context, f *File) ([]byte, error) {
 	url, err := gw.fileUploadURL(f)
 	if err != nil {
 		return nil, fmt.Errorf("upload url: %w", err)
@@ -163,7 +163,7 @@ func (gw *Gateway) FetchFile(ctx context.Context, f *File) ([]byte, error) {
 	return io.ReadAll(res.Body)
 }
 
-func (gw *Gateway) prepareCreateFileFromData(req *CreateFile, data []byte) {
+func (gw *Client) prepareCreateFileFromData(req *CreateFile, data []byte) {
 	req.Size = int32(len(data))
 	mt := mimetype.Detect(data)
 	req.Mime = mt.String()
@@ -174,7 +174,7 @@ func (gw *Gateway) prepareCreateFileFromData(req *CreateFile, data []byte) {
 // fileUploadURL determines the URL used to upload to. We don't use the URL
 // provided by the silo service as that is only reliable for exterior public
 // use.
-func (gw *Gateway) fileUploadURL(f *File) (string, error) {
+func (gw *Client) fileUploadURL(f *File) (string, error) {
 	if gw.siloPublicBaseURL == "" {
 		return "", errors.New("missing silo public base url")
 	}
@@ -188,7 +188,7 @@ func (gw *Gateway) fileUploadURL(f *File) (string, error) {
 }
 
 // Start begins the gateway service and starts listening for incoming tasks.
-func (gw *Gateway) Start(ctx context.Context) error {
+func (gw *Client) Start(ctx context.Context) error {
 	if gw.th == nil {
 		return errors.New("task handler required")
 	}
@@ -205,7 +205,7 @@ func (gw *Gateway) Start(ctx context.Context) error {
 }
 
 // Stop is used to gracefully drain all requests and wait for them to complete.
-func (gw *Gateway) Stop() {
+func (gw *Client) Stop() {
 	if gw.sub != nil {
 		gw.sub.Unsubscribe() // nolint:errcheck
 		gw.sub.Drain()       // nolint:errcheck
@@ -214,7 +214,7 @@ func (gw *Gateway) Stop() {
 	gw.wg.Wait()
 }
 
-func (gw *Gateway) subscribeIncomingTasks() error {
+func (gw *Client) subscribeIncomingTasks() error {
 	subj := fmt.Sprintf(SubjectTaskFmt, gw.name)
 	queue := fmt.Sprintf(QueueNameTaskFmt, gw.name)
 	var err error
@@ -225,13 +225,13 @@ func (gw *Gateway) subscribeIncomingTasks() error {
 	return nil
 }
 
-func (gw *Gateway) startTaskWorker(ctx context.Context) {
+func (gw *Client) startTaskWorker(ctx context.Context) {
 	for m := range gw.incoming {
 		gw.processTask(ctx, m)
 	}
 }
 
-func (gw *Gateway) processTask(ctx context.Context, m *nats.Msg) {
+func (gw *Client) processTask(ctx context.Context, m *nats.Msg) {
 	gw.wg.Add(1)
 	defer gw.wg.Done()
 
