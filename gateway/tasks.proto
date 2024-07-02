@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package invopop.provider.v1;
+option go_package = "./;gateway";
+
+import "files.proto";
+import "errors.proto";
+
+enum TaskStatus {
+	NA = 0; // invalid
+	OK = 1; // OKAY
+	ERR = 2; // Something went wrong.
+	QUEUED = 3; // Try again later
+	POKE = 6; // Needs a poke to wake up
+	CANCEL = 7; // Cancel requested
+	KO = 4; // Imposible to complete
+	SKIP = 5; // Not processed, see message
+}
+
+// Task keeps together the request and base data to be used by a processor
+// to provide a result.
+message Task {
+	// Basic details
+	string id = 1;
+	string job_id = 2;
+	string silo_entry_id = 3; // was previously envelope_id
+	string owner_id = 9; // May be used for authentication
+	string ref = 10; // If provided in a previous request, will be here too
+	string action = 12; // Action to be performed by the provider.
+
+	// Token proves that the request came from the gateway and can be used
+	// by the provider to make additional requests to the gateway on behalf
+	// of the end-user.
+	string token = 11;
+
+	// Quick access to data
+	string state = 13; // state of the silo entry
+	bytes envelope = 4;
+	bytes config = 5;
+	string envelope_public_url = 7;
+
+	// Rerefence to any existing attachments
+	repeated File files = 6;
+
+	// Tracking timestamp, issued by the gateway service. Includes nano seconds.
+	double ts = 8;
+}
+
+// TaskResult says what we expect from a provider after attempting to complete
+// a task.
+message TaskResult {
+	TaskStatus status = 1;
+	string code = 2; // optional provider response code
+	string message = 3; // human message
+	string ref = 11; // optional reference to identify the result later
+
+	bytes data = 9; // New Envelope either complete or patched data
+	string content_type = 10; // Data content type to send to silo
+
+	int32 retry_in = 6; // For QUEUED or ERR response, how long to wait to try again (optional).
+}
+
+// TaskPoke is used to wake up a task that is currently QUEUED.
+message TaskPoke {
+	string id = 1; // Task (Intent) ID
+	string job_id = 2;
+	string ref = 3; // If id and job_id are not available
+	string code = 4;
+	string message = 5;
+}
+
+// TaskPokeResponse is the response to a TaskPoke request.
+message TaskPokeResponse {
+	Error err = 1;
+}

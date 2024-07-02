@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package invopop.provider.v1;
+option go_package = "./;gateway";
+
+import "errors.proto";
+
+message File {
+	string id = 1;
+	string silo_entry_id = 7;
+	string hash = 8;
+	string name = 2;
+	string desc = 9;
+	string mime = 3;
+	string public_url = 4;
+	map<string,string> meta = 5;
+	bool uploaded = 6; // True if the file data has been uploaded.
+	bool embeddable = 10; // Can this file be embedded inside others, like PDFs?
+}
+
+message CreateFile {
+	string id = 1;
+	string job_id = 2; // for request tracing
+	string silo_entry_id = 3;
+
+	string name = 4;
+	string desc = 5;
+	bool embeddable = 10; // can this file be embedded?
+
+	string sha256 = 6;
+	string mime = 7;
+	int32 size = 8;
+	
+	map<string,string> meta = 9;
+}
+
+// FileResponse makes it easier to provide an error message if
+// something goes wrong, or the actual result.
+message FileResponse {
+	File file = 1;
+	Error err = 2;
+}
