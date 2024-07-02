@@ -11,3 +11,8 @@ type AccessService service
 func (svc *AccessService) Enrollment() *EnrollmentService {
 	return (*EnrollmentService)(svc)
 }
+
+// Company returns the service for Access Companies
+func (svc *AccessService) Company() *CompanyService {
+	return (*CompanyService)(svc)
+}
