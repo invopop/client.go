@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	companyPath = "/company"
+	workspacePath = "/workspace"
 )
 
 // WorkspaceService is used to access the workspace whose credentials
@@ -27,7 +27,7 @@ type Workspace struct {
 // Fetch will attempt to retrieve the company associated with the current
 // authentication token.
 func (s *WorkspaceService) Fetch(ctx context.Context) (*Workspace, error) {
-	p := path.Join(accessBasePath, companyPath)
+	p := path.Join(accessBasePath, workspacePath)
 	c := new(Workspace)
 	return c, s.client.get(ctx, p, c)
 }
