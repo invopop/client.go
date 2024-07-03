@@ -9,12 +9,12 @@ const (
 	companyPath = "/company"
 )
 
-// CompanyService is used to access the company whose credentials
+// WorkspaceService is used to access the workspace whose credentials
 // we're using to authenticate with the API.
-type CompanyService service
+type WorkspaceService service
 
-// Company represents a company or workspace in the system.
-type Company struct {
+// Workspace represents a workspace previously known as a "company" in the system.
+type Workspace struct {
 	ID        string `json:"id" title:"ID" description:"UUID of the company." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	CreatedAt string `json:"created_at" title:"Created At" description:"The date and time the company was created." example:"2018-01-01T00:00:00.000Z"`
 	UpdatedAt string `json:"updated_at" title:"Updated At" description:"The date and time the company was last updated." example:"2018-01-01T00:00:00.000Z"`
@@ -26,8 +26,8 @@ type Company struct {
 
 // Fetch will attempt to retrieve the company associated with the current
 // authentication token.
-func (s *CompanyService) Fetch(ctx context.Context) (*Company, error) {
+func (s *WorkspaceService) Fetch(ctx context.Context) (*Workspace, error) {
 	p := path.Join(accessBasePath, companyPath)
-	c := new(Company)
+	c := new(Workspace)
 	return c, s.client.get(ctx, p, c)
 }
