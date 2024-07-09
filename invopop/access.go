@@ -11,3 +11,14 @@ type AccessService service
 func (svc *AccessService) Enrollment() *EnrollmentService {
 	return (*EnrollmentService)(svc)
 }
+
+// Workspace returns the service for Access Workspaces
+func (svc *AccessService) Workspace() *WorkspaceService {
+	return (*WorkspaceService)(svc)
+}
+
+// Company returns the service for Access Workspaces
+// Deprecated: Use Workspace instead.
+func (svc *AccessService) Company() *WorkspaceService {
+	return svc.Workspace()
+}
