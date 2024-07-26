@@ -16,6 +16,13 @@ const (
 	entriesPath = "entries"
 )
 
+// Recognized update content types
+const (
+	MIMEApplicationJSON           = "application/json"
+	MIMEApplicationMergePatchJSON = "application/merge-patch+json" // RFC7396
+	MIMEApplicationJSONPatch      = "application/json-patch+json"  // RFC6902
+)
+
 // SiloEntriesService is responsible for managing the connection
 // to the Silo API endpoints.
 type SiloEntriesService service
@@ -86,9 +93,10 @@ type CreateSiloEntry struct {
 
 // UpdateSiloEntry allows for a silo document to be updated under certain conditions.
 type UpdateSiloEntry struct {
-	ID     string          `json:"-"`
-	Folder string          `json:"folder,omitempty" title:"Folder" description:"New location for the silo entry." example:"drafts"`
-	Data   json.RawMessage `json:"data" title:"Data" description:"Updated envelope data. New document contents will only be accepted if the existing envelope data is still a draft."`
+	ID          string          `json:"-"`
+	Folder      string          `json:"folder,omitempty" title:"Folder" description:"New location for the silo entry." example:"drafts"`
+	ContentType string          `json:"content_type,omitempty" title:"Content Type" description:"The content type of the data being uploaded which by default expects application/json for a complete document, merge patch application/merge-patch+json (RFC7396), or a simple patch application/json-patch+json (RFC6902)" example:"application/json"`
+	Data        json.RawMessage `json:"data" title:"Data" description:"Updated envelope data either a complete envelope or document, or patched data according to the content type."`
 }
 
 // FindSiloEntries is used to list entries ordered by date.
