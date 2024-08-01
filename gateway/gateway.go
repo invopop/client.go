@@ -275,10 +275,10 @@ func prepareNATSClient(conf *natsconf.Config, name string) *nats.EncodedConn {
 	opts = append(opts, nats.Name(name))
 
 	// Add our own connection logging stuff
-	opts = append(opts, nats.ConnectHandler(func(nc *nats.Conn) {
+	opts = append(opts, nats.ConnectHandler(func(_ *nats.Conn) {
 		log.Info().Str("url", conf.URL).Msg("nats connected")
 	}))
-	opts = append(opts, nats.DisconnectHandler(func(nc *nats.Conn) {
+	opts = append(opts, nats.DisconnectHandler(func(_ *nats.Conn) {
 		log.Warn().Str("url", conf.URL).Msg("nats disconnected")
 	}))
 
