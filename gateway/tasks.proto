@@ -39,11 +39,21 @@ message Task {
 	bytes config = 5;
 	string envelope_public_url = 7;
 
+	// Array of faults copied from the job which may be useful for reporting.
+	repeated Fault faults = 14;
+
 	// Rerefence to any existing attachments
 	repeated File files = 6;
 
 	// Tracking timestamp, issued by the gateway service. Includes nano seconds.
 	double ts = 8;
+}
+
+// A Fault provides basic information about a previous step that KO'd.
+message Fault {
+	string provider = 1;
+	string code = 2;
+	string message = 3;
 }
 
 // TaskResult says what we expect from a provider after attempting to complete
