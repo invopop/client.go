@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/invopop/gobl/uuid"
 )
@@ -51,9 +52,11 @@ type Next struct {
 
 // WorkflowCollection contains a list of workflows.
 type WorkflowCollection struct {
-	List      []*Workflow `json:"list"`
-	Limit     int32       `json:"limit"`
-	CreatedAt string      `json:"created_at"`
+	List          []*Workflow `json:"list"`
+	Limit         int32       `json:"limit,omitempty"`
+	CreatedAt     string      `json:"created_at,omitempty"`
+	NextCreatedAt string      `json:"next_created_at,omitempty"`
+	Schema        string      `json:"schema,omitempty"`
 }
 
 // CreateWorkflow defines what is required for a new workflow.
@@ -72,6 +75,13 @@ type UpdateWorkflow struct {
 	Name        string  `json:"name" form:"name" title:"Name" description:"New name for the workflow."`
 	Description string  `json:"description,omitempty" form:"description" title:"Description" description:"Updated description."`
 	Steps       []*Step `json:"steps" form:"steps" title:"Steps" description:"Array of Steps to use for this workflow."`
+}
+
+// FindWorkflows is used to get a list of workflows according to the conditions provided.
+type FindWorkflows struct {
+	Limit     int32
+	CreatedAt string
+	Schema    string
 }
 
 // Fetch makes a request for the workflow by its ID.
@@ -100,15 +110,25 @@ func (svc *WorkflowsService) Update(ctx context.Context, req *UpdateWorkflow) (*
 	return m, svc.client.patch(ctx, p, req, m)
 }
 
-// List prepares a pageable list of workflows that belong to the requester.
-func (svc *WorkflowsService) List(ctx context.Context, createdAt string) (*WorkflowCollection, error) {
+// List prepares a list of workflows that belong to the requester. Pagination is
+// supported using the "created_at" parameter and "next_created_at" property from
+// the resulting collection, if needed.
+func (svc *WorkflowsService) List(ctx context.Context, req *FindWorkflows) (*WorkflowCollection, error) {
 	p := path.Join(transformBasePath, workflowsPath)
-	query := make(url.Values)
-	if createdAt != "" {
-		query.Add("created_at", createdAt)
-	}
-	if len(query) > 0 {
-		p = p + "?" + query.Encode()
+	if req != nil {
+		query := make(url.Values)
+		if req.Limit != 0 {
+			query.Add("limit", strconv.Itoa(int(req.Limit)))
+		}
+		if req.CreatedAt != "" {
+			query.Add("created_at", req.CreatedAt)
+		}
+		if req.Schema != "" {
+			query.Add("schema", req.Schema)
+		}
+		if len(query) > 0 {
+			p = p + "?" + query.Encode()
+		}
 	}
 	m := new(WorkflowCollection)
 	return m, svc.client.get(ctx, p, m)

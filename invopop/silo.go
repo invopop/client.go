@@ -16,3 +16,8 @@ func (svc *SiloService) Entries() *SiloEntriesService {
 func (svc *SiloService) Meta() *SiloMetaService {
 	return (*SiloMetaService)(svc)
 }
+
+// GOBL provides a wrapper around silo's gobl methods.
+func (svc *SiloService) GOBL() *SiloGOBLService {
+	return (*SiloGOBLService)(svc)
+}
