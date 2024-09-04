@@ -140,6 +140,10 @@ func (svc *SiloEntriesService) Fetch(ctx context.Context, id string) (*SiloEntry
 // Create makes a request to persist a new silo entry.
 func (svc *SiloEntriesService) Create(ctx context.Context, req *CreateSiloEntry) (*SiloEntry, error) {
 	e := new(SiloEntry)
+	if req.ID == "" {
+		// don't judge, just post!
+		return e, svc.client.post(ctx, path.Join(siloBasePath, entriesPath), req, e)
+	}
 	return e, svc.client.put(ctx, path.Join(siloBasePath, entriesPath, req.ID), req, e)
 }
 

@@ -10,7 +10,7 @@ require (
 	github.com/invopop/gobl v0.113.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/magefile/mage v1.15.0
-	github.com/nats-io/nats.go v1.36.0
+	github.com/nats-io/nats.go v1.37.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.8.4
 	github.com/ziflex/lecho/v3 v3.5.0
