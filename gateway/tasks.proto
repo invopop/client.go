@@ -61,8 +61,9 @@ message Fault {
 
 // Meta represents a simplified Silo Meta row.
 message Meta {
-	string key = 1;
-	bytes value = 2;
+	string src = 1;
+	string key = 2;
+	bytes value = 3;
 }
 
 // TaskResult says what we expect from a provider after attempting to complete
