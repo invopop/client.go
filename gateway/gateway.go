@@ -4,6 +4,8 @@
 // This package is only meant to be used by applications that will receive and
 // process tasks via NATS, hence why it is independent from the main Invopop
 // package.
+//
+// Usage of zerolog for logging is assumed.
 package gateway
 
 import (
@@ -46,8 +48,10 @@ type Option func(gw *Client)
 // options. Previous versions expected a configuration directly, you can
 // still use that method if you prefer as follows:
 //
-//	gw := gateway.New(gateway.WithConfig(conf))
-//	gw.Subscribe(handler)
+//		gw := gateway.New(
+//	 	gateway.WithConfig(conf),
+//	 	gateway.WithTaskHandler(handler),
+//	 )
 //
 // If you already have a nats connection you can use that directly, but
 // be sure to set the additional name options:
@@ -76,13 +80,16 @@ func New(opts ...Option) *Client {
 }
 
 // NATS provides the NATS Connection so that it can be used
-// for other tasks if needed.
+// elsewhere if needed.
 func (gw *Client) NATS() *nats.Conn {
 	return gw.nc
 }
 
 // Subscribe indicates which method should be called when
 // messages are received from the gateway service.
+//
+// Deprecated: Use the WithTaskHandler option during instantiation
+// instead.
 func (gw *Client) Subscribe(th TaskHandler) {
 	gw.th = th
 }
