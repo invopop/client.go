@@ -45,6 +45,9 @@ message Task {
 	// Rerefence to any existing attachments
 	repeated File files = 6;
 
+	// Shared meta rows, if any, associated with the silo entry.
+	repeated Meta meta = 15;
+
 	// Tracking timestamp, issued by the gateway service. Includes nano seconds.
 	double ts = 8;
 }
@@ -54,6 +57,13 @@ message Fault {
 	string provider = 1;
 	string code = 2;
 	string message = 3;
+}
+
+// Meta represents a simplified Silo Meta row.
+message Meta {
+	string src = 1;
+	string key = 2;
+	bytes value = 3;
 }
 
 // TaskResult says what we expect from a provider after attempting to complete
