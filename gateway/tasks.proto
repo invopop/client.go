@@ -70,14 +70,21 @@ message Meta {
 // a task.
 message TaskResult {
 	TaskStatus status = 1;
-	string code = 2; // optional provider response code
-	string message = 3; // human message
-	string ref = 11; // optional reference to identify the result later
-
-	bytes data = 9; // New Envelope either complete or patched data
-	string content_type = 10; // Data content type to send to silo
-
-	int32 retry_in = 6; // For QUEUED or ERR response, how long to wait to try again (optional).
+	// optional provider response code
+	string code = 2;
+	// human response message
+	string message = 3;
+	// reference that can be used to identify the job later such
+	// as in a poke request.
+	string ref = 11;
+	// sign when true, will ensure the envelope is signed 
+	bool sign = 12;
+	// envelope data either complete or patched according to content_type
+	bytes data = 9; 
+	// Content type of data to send to the silo
+	string content_type = 10;
+	// For QUEUED or ERR response, how long to wait to try again (optional).
+	int32 retry_in = 6;
 }
 
 // TaskPoke is used to wake up a task that is currently QUEUED.
