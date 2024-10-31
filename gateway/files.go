@@ -106,8 +106,10 @@ func (gw *Client) FetchFile(ctx context.Context, f *File) ([]byte, error) {
 
 func (gw *Client) prepareCreateFileFromData(req *CreateFile, data []byte) {
 	req.Size = int32(len(data))
-	mt := mimetype.Detect(data)
-	req.Mime = mt.String()
+	if req.Mime == "" {
+		mt := mimetype.Detect(data)
+		req.Mime = mt.String()
+	}
 	sum := sha256.Sum256(data)
 	req.Sha256 = hex.EncodeToString(sum[:])
 }
