@@ -53,3 +53,14 @@ func TaskOK() *TaskResult {
 func TaskSkip(msg string) *TaskResult {
 	return &TaskResult{Status: TaskStatus_SKIP, Message: msg}
 }
+
+// TaskQueued provides a queued task result with the provided message and
+// retryIn value. This is used to indicate that the task processing didn't
+// complete for whatever reason and must be retried after the specified time.
+func TaskQueued(msg string, retryIn int32) *TaskResult {
+	return &TaskResult{
+		Status:  TaskStatus_QUEUED,
+		Message: msg,
+		RetryIn: retryIn,
+	}
+}
