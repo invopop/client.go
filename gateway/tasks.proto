@@ -27,6 +27,7 @@ message Task {
 	string owner_id = 9; // May be used for authentication
 	string ref = 10; // If provided in a previous request, will be here too
 	string action = 12; // Action to be performed by the provider.
+	bool sandbox = 16; // If true, execute in sandbox environment.
 
 	// Token proves that the request came from the gateway and can be used
 	// by the provider to make additional requests to the gateway on behalf
