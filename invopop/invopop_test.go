@@ -47,3 +47,11 @@ func Test_put(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPClient(t *testing.T) {
+	hc := new(http.Client)
+	c := &Client{
+		conn: resty.NewWithClient(hc),
+	}
+	assert.Equal(t, hc, c.HTTPClient())
+}

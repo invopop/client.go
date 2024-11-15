@@ -3,6 +3,7 @@ package invopop
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -25,6 +26,11 @@ const (
 	productionHost                  = "https://api.invopop.com"
 	clientKey      invopopClientKey = "invopop-client"
 )
+
+// HTTPClient returns the underlying HTTP client (useful for mocking).
+func (c *Client) HTTPClient() *http.Client {
+	return c.conn.GetClient()
+}
 
 // Utils provides access to the utils service.
 func (c *Client) Utils() *UtilsService {
