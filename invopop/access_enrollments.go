@@ -24,6 +24,7 @@ type Enrollment struct {
 
 	OwnerID string `json:"owner_id" title:"Owner ID" description:"The ID of the entity that owns the enrollment." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	AppID   string `json:"app_id" title:"Application ID" description:"ID of the application associated with the enrollment." example:"01900e17-db4d-78a5-8505-c93ae63e8a0d"`
+	Sandbox bool   `json:"sandbox" title:"Sandbox" description:"Indicates if the enrollment's workspace is in a sandbox environment." example:"false"`
 
 	Data json.RawMessage `json:"data" title:"Data" description:"Additional data associated with the enrollment." example:"{\"key\":\"value\"}"`
 
