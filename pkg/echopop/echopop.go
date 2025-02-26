@@ -64,6 +64,34 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 
 }
 
+// AuthToken defines a middleware function that will check if the
+// header contains an authentication token.
+//
+// If it does, the token will be included in the invopop client to be used
+// to authenticate requests to the API. It is thought for endpoints where an
+// oauth access token is required to access the API.
+func AuthToken(ic *invopop.Client) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			tok := ""
+
+			// extract bearer auth token
+			ah := strings.Split(c.Request().Header.Get("Authorization"), "Bearer ")
+			if len(ah) == 2 && ah[1] != "" {
+				tok = ah[1]
+			}
+			if tok == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing auth token")
+			}
+
+			c.Set(invopopClientKey, ic.SetAuthToken(tok))
+
+			return next(c)
+		}
+	}
+
+}
+
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
 	return c.Get(enrollmentKey).(*invopop.Enrollment)

@@ -44,7 +44,7 @@ type authorizeEnrollment struct {
 	ClientSecret string `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"YSKIfGaUrEdDFK_NPGO-Yj1oVDJcjV15N4hHbuAEg2c"`
 }
 
-// CreateEnrollment is used by apps to create an enrollment on behalf of
+// createEnrollment is used by apps to create an enrollment on behalf of
 // an end user after choosing a workspace.
 type createEnrollment struct {
 	ID           string          `param:"id" title:"ID" description:"UUIDv7 of the new enrollment to create." example:"01950020-daef-7d75-b1ba-33e7e392a658"`
