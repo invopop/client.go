@@ -23,6 +23,8 @@ message Task {
 	// Basic details
 	string id = 1;
 	string job_id = 2;
+	string job_key = 17;
+	map <string, string> job_meta = 18;
 	string silo_entry_id = 3; // was previously envelope_id
 	string owner_id = 9; // May be used for authentication
 	string ref = 10; // If provided in a previous request, will be here too
@@ -86,6 +88,10 @@ message TaskResult {
 	string content_type = 10;
 	// For QUEUED or ERR response, how long to wait to try again (optional).
 	int32 retry_in = 6;
+	// Optional Silo Entry ID to be used when a new silo entry was created
+	// by this task, and it should be used for all subsequent actions in 
+	// the workflow. If data is also included, the silo entry will be created.
+	optional string silo_entry_id = 13;
 }
 
 // TaskPoke is used to wake up a task that is currently QUEUED.
