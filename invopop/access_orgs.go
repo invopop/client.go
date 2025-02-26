@@ -29,7 +29,6 @@ type Org struct {
 // Fetch will attempt to retrieve the organizations associated with a user
 // This method will only work with an oauth token
 func (s *OrgService) Fetch(ctx context.Context) ([]*Org, error) {
-	// Create an array of orgs
 	p := path.Join(accessBasePath, orgsPath)
 	var orgs []*Org
 	return orgs, s.client.get(ctx, p, &orgs)
