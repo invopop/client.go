@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	entriesPath = "entries"
+	entriesPath    = "entries"
+	entriesKeyPath = "key"
 )
 
 // Recognized update content types
@@ -33,9 +34,11 @@ type SiloEntry struct {
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 
+	Key       string       `json:"key,omitempty" title:"Key" description:"Key used to identify the entry idempotently within a workspace." example:"invoice-101"`
 	Folder    string       `json:"folder" title:"Folder" description:"Key for the folder where the entry is located." example:"sales"`
 	State     string       `json:"state,omitempty" title:"State" description:"Current state of the silo entry if not a draft." example:"sent"`
-	Draft     bool         `json:"draft,omitempty" title:"Draft" description:"When true, indicates that the envelope is a draft." example:"true"`
+	Faults    []*Fault     `json:"faults,omitempty" title:"Faults" description:"List of faults that occurred during the processing of the job associated with the last state."`
+	Signed    bool         `json:"signed,omitempty" title:"Signed" description:"When true, the envelope has been signed and should not be modified." example:"true"`
 	Invalid   bool         `json:"invalid,omitempty" title:"Invalid" description:"When true, the envelope's contents are invalid and need to be reviewed." example:"true"`
 	EnvSchema string       `json:"env_schema" title:"Envelope Schema" description:"Schema URL for the envelope." example:"https://gobl.org/draft-0/envelope"`
 	DocSchema string       `json:"doc_schema" title:"Object Schema" description:"Schema URL for the envelope's payload." example:"https://gobl.org/draft-0/bill/invoice"`
@@ -135,6 +138,12 @@ func (svc *SiloEntriesService) List(ctx context.Context, req *FindSiloEntries) (
 func (svc *SiloEntriesService) Fetch(ctx context.Context, id string) (*SiloEntry, error) {
 	e := new(SiloEntry)
 	return e, svc.client.get(ctx, path.Join(siloBasePath, entriesPath, id), e)
+}
+
+// FetchByKey loads the requested silo entry by its key.
+func (svc *SiloEntriesService) FetchByKey(ctx context.Context, key string) (*SiloEntry, error) {
+	e := new(SiloEntry)
+	return e, svc.client.get(ctx, path.Join(siloBasePath, entriesPath, entriesKeyPath, key), e)
 }
 
 // Create makes a request to persist a new silo entry.
