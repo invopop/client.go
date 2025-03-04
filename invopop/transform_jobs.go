@@ -117,7 +117,7 @@ func (svc *JobsService) Fetch(ctx context.Context, id string) (*Job, error) {
 	return m, svc.client.get(ctx, p, m)
 }
 
-// Fetch fetches the latest job results by its key
+// FetchByKey fetches the latest job results by its key
 func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error) {
 	p := path.Join(transformBasePath, jobsPath, jobsKeyPath, key)
 	m := new(Job)

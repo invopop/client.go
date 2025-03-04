@@ -140,7 +140,7 @@ func (svc *SiloEntriesService) Fetch(ctx context.Context, id string) (*SiloEntry
 	return e, svc.client.get(ctx, path.Join(siloBasePath, entriesPath, id), e)
 }
 
-// Fetch loads the requested silo entry by its key.
+// FetchByKey loads the requested silo entry by its key.
 func (svc *SiloEntriesService) FetchByKey(ctx context.Context, key string) (*SiloEntry, error) {
 	e := new(SiloEntry)
 	return e, svc.client.get(ctx, path.Join(siloBasePath, entriesPath, entriesKeyPath, key), e)
