@@ -27,7 +27,7 @@ type Workflow struct {
 	Schema      string `json:"schema,omitempty" title:"Schema" description:"Short schema name that the workflow will be allowed to process."`
 	Country     string `json:"country,omitempty" title:"Country" description:"ISO country code the workflow will be used for."`
 	Draft       bool   `json:"draft,omitempty" title:"Draft" description:"When true, this workflow is still in draft mode and will not be used in jobs."`
-	Version     uint32 `json:"version,omitempty" title:"Version" description:"Version of the workflow's contents currently defined."`
+	Version     string `json:"version,omitempty" title:"Version" description:"Version of the workflow's contents currently defined."`
 	Hash        string `json:"hash,omitempty" title:"Hash" description:"Partial SHA256 hash of the workflow's contents."`
 
 	Steps  []*Step `json:"steps" title:"Steps" description:"List of steps to execute"`
