@@ -13,7 +13,7 @@ enum TaskStatus {
 	QUEUED = 3; // Try again later
 	POKE = 6; // Needs a poke to wake up
 	CANCEL = 7; // Cancel requested
-	KO = 4; // Imposible to complete
+	KO = 4; // Impossible to complete
 	SKIP = 5; // Not processed, see message
 }
 

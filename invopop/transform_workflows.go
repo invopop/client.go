@@ -26,28 +26,34 @@ type Workflow struct {
 	Description string `json:"description,omitempty" title:"Description" description:"Description of the workflow"`
 	Schema      string `json:"schema,omitempty" title:"Schema" description:"Short schema name that the workflow will be allowed to process."`
 	Country     string `json:"country,omitempty" title:"Country" description:"ISO country code the workflow will be used for."`
+	Draft       bool   `json:"draft,omitempty" title:"Draft" description:"When true, this workflow is still in draft mode and will not be used in jobs."`
 	Version     string `json:"version,omitempty" title:"Version" description:"Version of the workflow's contents currently defined."`
+	Hash        string `json:"hash,omitempty" title:"Hash" description:"Partial SHA256 hash of the workflow's contents."`
 
-	Steps []*Step `json:"steps" title:"Steps" description:"List of steps to execute"`
+	Steps  []*Step `json:"steps" title:"Steps" description:"List of steps to execute"`
+	Rescue []*Step `json:"rescue" title:"Rescue" description:"List of steps to execute when a KO status is returned by a previous step and not explicitly managed."`
 
 	Disabled bool `json:"disabled,omitempty"`
 }
 
 // Step represents a single action inside a workflow
 type Step struct {
-	ID       string          `json:"id" title:"ID" description:"The UUID (any version) of the step." example:"186522a6-e697-4e34-8498-eee961bcb845"`
-	Name     string          `json:"name" title:"Name" description:"Name of the step"`
-	Provider string          `json:"provider" title:"Provider" description:"ID of the provider to use" example:"provider"`
-	Notes    string          `json:"notes,omitempty" title:"Notes" description:"Additional internal details"`
-	Config   json.RawMessage `json:"config,omitempty" title:"Configuration" description:"JSON configuration sent to the provider"`
-	Next     []*Next         `json:"next,omitempty" title:"Next" description:"Optional array of next steps to execute after this one."`
+	ID      string          `json:"id" title:"ID" description:"The UUID (any version) of the step." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	Name    string          `json:"name" title:"Name" description:"Name of the step"`
+	Action  string          `json:"action" title:"Action" description:"ID of the action to use" example:"silo.modify"`
+	Notes   string          `json:"notes,omitempty" title:"Notes" description:"Additional internal details"`
+	Config  json.RawMessage `json:"config,omitempty" title:"Configuration" description:"JSON configuration sent to the provider"`
+	Summary string          `json:"summary,omitempty" title:"Summary" description:"Summary of the step's configuration."`
+	Next    []*Next         `json:"next,omitempty" title:"Next" description:"Optional array of next steps to execute after this one."`
 }
 
 // Next describes a next step to execute in a workflow.
 type Next struct {
-	Status string `json:"status,omitempty" title:"Status" description:"Step status to match against, when empty this next step will always be executed." enum:"OK,SKIP,KO,TIMEOUT"`
-	StepID string `json:"step_id,omitempty" title:"Step ID" description:"ID of the step to execute next." example:"186522a6-e697-4e34-8498-eee961bcb845"`
-	Stop   bool   `json:"stop,omitempty" title:"Stop" description:"When true, the workflow will stop after completing this step."`
+	Status string  `json:"status,omitempty" title:"Status" description:"Step status to match against, when empty this next step will always be executed." enum:"OK,SKIP,KO,TIMEOUT"`
+	Code   string  `json:"code,omitempty" title:"Code" description:"Code to match against"`
+	Steps  []*Step `json:"steps,omitempty" title:"Steps" description:"Array of steps to execute"`
+	StepID string  `json:"step_id,omitempty" title:"Step ID" description:"ID of the step to execute next." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	Stop   bool    `json:"stop,omitempty" title:"Stop" description:"When true, the workflow will stop after completing this step."`
 }
 
 // WorkflowCollection contains a list of workflows.

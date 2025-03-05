@@ -7,7 +7,10 @@ import (
 	"path"
 )
 
-const jobsPath = "jobs"
+const (
+	jobsPath    = "jobs"
+	jobsKeyPath = "key"
+)
 
 // JobsService provides endpoints for dealing with jobs.
 type JobsService service
@@ -21,15 +24,25 @@ type Job struct {
 	SiloEntryID string `json:"silo_entry_id,omitempty"`
 	WorkflowID  string `json:"workflow_id"`
 
-	Tags []string `json:"tags,omitempty"`
+	Key  string            `json:"key,omitempty" title:"Key" description:"Key assigned to the job, used to identify it in the system."`
+	Meta map[string]string `json:"meta,omitempty" title:"Meta" description:"Any additional data that might be relevant for processing."`
+	Tags []string          `json:"tags,omitempty" title:"Tags" description:"Any tags that may be useful to be associated with the job."`
 
 	CompletedAt string `json:"completed_at,omitempty"`
 
 	Intents []*JobIntent `json:"intents,omitempty"`
+	Faults  []*Fault     `json:"faults,omitempty" title:"Faults" description:"Array of fault objects that represent errors that occurred during the processing of the job."`
 
 	// Properties returned in response after completion
 	Envelope    json.RawMessage   `json:"envelope,omitempty"`
 	Attachments []*SiloAttachment `json:"attachments,omitempty"`
+}
+
+// Fault represents an error that occurred during the processing of a job.
+type Fault struct {
+	Provider string `json:"provider" title:"Provider" description:"ID of the provider that generated the fault." example:"pdf"`
+	Code     string `json:"code,omitempty" title:"Code" description:"Code assigned by the provider that may provide additional information about the fault."`
+	Message  string `json:"message" title:"Message" description:"Message assigned by the provider that may provide additional information about the fault."`
 }
 
 // Status returns true if the job has completed, and if there were any problems
@@ -100,6 +113,13 @@ func (svc *JobsService) Create(ctx context.Context, req *CreateJob) (*Job, error
 // Fetch fetches the latest job results.
 func (svc *JobsService) Fetch(ctx context.Context, id string) (*Job, error) {
 	p := path.Join(transformBasePath, jobsPath, id)
+	m := new(Job)
+	return m, svc.client.get(ctx, p, m)
+}
+
+// FetchByKey fetches the latest job results by its key
+func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error) {
+	p := path.Join(transformBasePath, jobsPath, jobsKeyPath, key)
 	m := new(Job)
 	return m, svc.client.get(ctx, p, m)
 }
