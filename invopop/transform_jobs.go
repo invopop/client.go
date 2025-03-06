@@ -88,10 +88,13 @@ type CreateJob struct {
 	ID         string `json:"-"`
 	WorkflowID string `json:"workflow_id" form:"workflow_id" title:"Workflow ID" description:"WorkflowID description"`
 
-	// Either Silo Entry ID or Data (complete envelope or document) are required.
-	// If both are provided, Silo Entry ID will take priority.
-	SiloEntryID string          `json:"silo_entry_id" form:"silo_entry_id" title:"Silo Entry ID" description:"ID for the entry in the silo as an alternative for the raw data object."`
-	Data        json.RawMessage `json:"data" form:"data" title:"Data" description:"Raw JSON data of the GOBL Envelope or Object when the Silo Entry ID is empty."`
+	// Either Silo Entry ID, Data (complete envelope or document), Key and Meta are
+	// required in order to create a job.
+	// If any combination are provided, Silo Entry ID will take priority, followed by data.
+	SiloEntryID string            `json:"silo_entry_id" form:"silo_entry_id" title:"Silo Entry ID" description:"ID for the entry in the silo as an alternative for the raw data object."`
+	Data        json.RawMessage   `json:"data" form:"data" title:"Data" description:"Raw JSON data of the GOBL Envelope or Object when the Silo Entry ID is empty."`
+	Key         string            `json:"key,omitempty" form:"key" title:"Key" description:"Idempotency key to ensure that only one job will be created with this value."`
+	Meta        map[string]string `json:"meta,omitempty" form:"meta" title:"Meta" description:"Additional data to associate with the job."`
 
 	Tags []string `json:"tags,omitempty" form:"tags" title:"Tags" description:"Tags to associate with the job."`
 
