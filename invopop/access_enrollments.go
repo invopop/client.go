@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"time"
 
 	"github.com/invopop/gobl/uuid"
 )
 
 const (
-	enrollmentPath = "/enrollment"
-	authorizePath  = "authorize"
+	enrollmentPath          = "/enrollment"
+	authorizePath           = "authorize"
+	enrollmentTokenDuration = 30 * time.Minute
 )
 
 // EnrollmentService helps manage access to a single enrollment

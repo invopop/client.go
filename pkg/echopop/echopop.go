@@ -14,6 +14,7 @@ const (
 	enrollmentKey      = "enrollment"
 	enrollmentStateKey = "state"
 	invopopClientKey   = "invopop-client"
+	HeaderEnrollmentID = "X-Enrollment-ID"
 )
 
 // AuthEnrollment defines a middleware function that will authenticate
@@ -90,6 +91,54 @@ func AuthToken(ic *invopop.Client) echo.MiddlewareFunc {
 		}
 	}
 
+}
+
+// AuthEnrollmentByID defines a middleware function that will authenticate
+// an enrollment using its ID with the Invopop API. This middleware will use
+// token caching to avoid repeated authentication requests for the same enrollment.
+//
+// This method requires the "X-Enrollment-ID" header to be set with the enrollment ID.
+// It will first try to use a cached token, and if not available or expired,
+// it will request a new token and cache it.
+func AuthEnrollmentByID(ic *invopop.Client) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := c.Request().Context()
+
+			// Get enrollment ID from header
+			enrollmentID := c.Request().Header.Get("X-Enrollment-ID")
+			if enrollmentID == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing enrollment ID")
+			}
+
+			var e *invopop.Enrollment
+			var err error
+			tok, found := ic.GetCachedEnrollmentToken(enrollmentID)
+			if found {
+				// override any existing tokens in the connection
+				ic = ic.SetAuthToken(tok)
+
+				e, err = ic.Access().Enrollment().Authorize(ctx)
+				if err != nil {
+					return err
+				}
+			} else {
+				// Get or authorize enrollment with the ID
+				e, err = ic.Access().Enrollment().AuthorizeWithID(ctx, enrollmentID)
+				if err != nil {
+					return err
+				}
+
+				ic.CacheEnrollmentToken(enrollmentID, e.Token)
+			}
+
+			// Store the authorized client in context
+			c.Set(enrollmentKey, e)
+			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
+
+			return next(c)
+		}
+	}
 }
 
 // GetEnrollment retrieves the enrollment object from the context.

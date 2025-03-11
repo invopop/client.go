@@ -4,9 +4,17 @@ package invopop
 import (
 	"context"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 )
+
+// EnrollmentTokenCacheEntry represents a cached enrollment token with its expiration time
+type EnrollmentTokenCacheEntry struct {
+	Token     string
+	ExpiresAt time.Time
+}
 
 // Client manages communication with the Invopop API.
 type Client struct {
@@ -16,6 +24,10 @@ type Client struct {
 	// will only be used if needed by specific endpoints.
 	clientID     string
 	clientSecret string
+
+	// Enrollment token cache
+	enrollmentTokenCache      map[string]EnrollmentTokenCacheEntry // Maps enrollment ID to token and expiration
+	enrollmentTokenCacheMutex sync.RWMutex
 
 	svc *service
 }
@@ -71,6 +83,9 @@ func New(opts ...ClientOption) *Client {
 	c.conn = resty.New().
 		SetBaseURL(productionHost)
 
+	// Initialize the enrollment token cache
+	c.enrollmentTokenCache = make(map[string]EnrollmentTokenCacheEntry)
+
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -119,11 +134,46 @@ func WithOAuthClient(id, secret string) ClientOption {
 // connections that don't necessarily share the same token, such
 // as when building apps that use enrollments to authenticate
 // sessions.
+//
+// Note: This doesn't interact with the token cache. Use CacheEnrollmentToken
+// and GetCachedEnrollmentToken for token caching.
 func (c *Client) SetAuthToken(token string) *Client {
 	c2 := *c
 	c2.conn = c2.conn.Clone().SetAuthToken(token)
 	c2.svc = &service{client: &c2}
 	return &c2
+}
+
+// GetCachedEnrollmentToken retrieves a cached token for the given enrollment ID if one exists and is not expired.
+// Returns the token and a boolean indicating if a valid token was found.
+func (c *Client) GetCachedEnrollmentToken(enrollmentID string) (string, bool) {
+	c.enrollmentTokenCacheMutex.RLock()
+	defer c.enrollmentTokenCacheMutex.RUnlock()
+
+	entry, exists := c.enrollmentTokenCache[enrollmentID]
+	if !exists {
+		return "", false
+	}
+
+	// Check if the token is expired (assuming 30 min TTL)
+	if time.Now().After(entry.ExpiresAt) {
+		return "", false
+	}
+
+	return entry.Token, true
+}
+
+// CacheEnrollmentToken stores an enrollment token with its ID and sets an expiration time.
+func (c *Client) CacheEnrollmentToken(enrollmentID, token string) {
+	c.enrollmentTokenCacheMutex.Lock()
+	defer c.enrollmentTokenCacheMutex.Unlock()
+
+	expiresAt := time.Now().Add(enrollmentTokenDuration)
+
+	c.enrollmentTokenCache[enrollmentID] = EnrollmentTokenCacheEntry{
+		Token:     token,
+		ExpiresAt: expiresAt,
+	}
 }
 
 // Context adds the current client model to the context so that it can be
