@@ -88,6 +88,7 @@ type CreateSiloEntry struct {
 	ID           string          `json:"-"`
 	Folder       string          `json:"folder,omitempty" title:"Folder" description:"In which folder the entry should be associated, leave empty to use the automatic rules."`
 	Data         json.RawMessage `json:"data,omitempty" title:"Data" description:"Data contents to upload which may either be a GOBL Envelope or Object. Any partial data will be calculated and validated automatically."`
+	Key          string          `json:"key,omitempty" title:"Key" description:"Key used to identify the entry idempotently within a workspace." example:"invoice-101"`
 	PreviousID   string          `json:"previous_id,omitempty" title:"Previous ID" description:"The UUIDv1 of the previous silo entry to copy." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	ContentType  string          `json:"content_type,omitempty" title:"Content Type" description:"The content type of the data being uploaded." example:"application/json"`
 	Correct      json.RawMessage `json:"correct,omitempty" title:"Correct" description:"JSON object containing the GOBL correction option data." example:"{\"credit\": true}"`
