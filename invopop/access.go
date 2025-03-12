@@ -22,3 +22,8 @@ func (svc *AccessService) Workspace() *WorkspaceService {
 func (svc *AccessService) Company() *WorkspaceService {
 	return svc.Workspace()
 }
+
+// Org returns the service for Access Organizations
+func (svc *AccessService) Org() *OrgService {
+	return (*OrgService)(svc)
+}
