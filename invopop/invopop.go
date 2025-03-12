@@ -119,9 +119,6 @@ func WithOAuthClient(id, secret string) ClientOption {
 // connections that don't necessarily share the same token, such
 // as when building apps that use enrollments to authenticate
 // sessions.
-//
-// Note: This doesn't interact with the token cache. Use CacheEnrollmentToken
-// and GetCachedEnrollmentToken for token caching.
 func (c *Client) SetAuthToken(token string) *Client {
 	c2 := *c
 	c2.conn = c2.conn.Clone().SetAuthToken(token)

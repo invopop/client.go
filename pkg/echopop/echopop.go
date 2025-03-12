@@ -14,6 +14,7 @@ const (
 	enrollmentKey      = "enrollment"
 	enrollmentStateKey = "state"
 	invopopClientKey   = "invopop-client"
+	// HeaderEnrollmentID is the header key used to pass the enrollment ID
 	HeaderEnrollmentID = "X-Enrollment-ID"
 )
 
