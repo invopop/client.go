@@ -111,25 +111,9 @@ func AuthEnrollmentByID(ic *invopop.Client) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, "missing enrollment ID")
 			}
 
-			var e *invopop.Enrollment
-			var err error
-			tok, found := ic.GetCachedEnrollmentToken(enrollmentID)
-			if found {
-				// override any existing tokens in the connection
-				ic = ic.SetAuthToken(tok)
-
-				e, err = ic.Access().Enrollment().Authorize(ctx)
-				if err != nil {
-					return err
-				}
-			} else {
-				// Get or authorize enrollment with the ID
-				e, err = ic.Access().Enrollment().AuthorizeWithID(ctx, enrollmentID)
-				if err != nil {
-					return err
-				}
-
-				ic.CacheEnrollmentToken(enrollmentID, e.Token)
+			e, err := ic.Access().Enrollment().AuthorizeWithID(ctx, enrollmentID)
+			if err != nil {
+				return err
 			}
 
 			// Store the authorized client in context
