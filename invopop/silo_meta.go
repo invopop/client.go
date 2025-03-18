@@ -21,6 +21,7 @@ type SiloMeta struct {
 	CreatedAt string `json:"created_at" title:"Created At" description:"Timestamp of when the row was created." example:"2018-01-01T00:00:00.000Z"`
 	UpdatedAt string `json:"updated_at" title:"Updated At" description:"Timestamp of when the row was last updated." example:"2018-01-01T00:00:00.000Z"`
 
+	OwnerID   string          `json:"owner_id,omitempty" title:"Owner ID" description:"UUID of the owner of the silo entry, typically a workspace ID. Included for reference when the authentication token does not already include the owner such as for lookups by reference."`
 	EntryID   string          `json:"entry_id,omitempty" title:"Entry ID" description:"ID of the entry this meta row belongs to" example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	Src       string          `json:"src,omitempty" title:"Source" description:"The service or source that create this meta entry." example:"provider"`
 	Key       string          `json:"key,omitempty" title:"Key" description:"Key used to identify the meta entry by the source." example:"service-id"`
