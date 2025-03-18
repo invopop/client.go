@@ -81,6 +81,8 @@ func (s *Service) StaticRootFS(fs fs.FS, root string) {
 // Where the name ("templates") defines the path inside the source assets
 // folder ("./assets") to find the data, *or* if not available, use
 // the `assets.Content` embedded filesystem.
+//
+// Deprecated: use the echopop.Render method that uses templ.
 func (s *Service) Render(name, src string, fs embed.FS) {
 	var ev *echoview.ViewEngine
 	base := path.Join(src, name)

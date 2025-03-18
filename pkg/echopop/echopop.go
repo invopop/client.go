@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/a-h/templ"
 	"github.com/invopop/client.go/invopop"
 	"github.com/labstack/echo/v4"
 )
@@ -73,4 +74,21 @@ func GetEnrollment(c echo.Context) *invopop.Enrollment {
 // the enrollment's auth token.
 func GetClient(c echo.Context) *invopop.Client {
 	return c.Get(invopopClientKey).(*invopop.Client)
+}
+
+// Render will render the provided Templ Component.
+//
+// Usage example:
+//
+//	func (ct *controller) config(c echo.Context) error {
+//		return echopop.Render(c, http.StatusOK, app.Configure())
+//	}
+func Render(c echo.Context, status int, t templ.Component) error {
+	c.Response().Writer.WriteHeader(status)
+
+	if err := t.Render(c.Request().Context(), c.Response().Writer); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return nil
 }
