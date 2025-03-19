@@ -88,11 +88,10 @@ func WithConfig(conf *Config) ClientOption {
 		if conf.BaseURL != "" {
 			c.conn = c.conn.SetBaseURL(conf.BaseURL)
 		}
-		if conf.ClientID != "" {
+		if conf.ClientID != "" && conf.ClientSecret != "" {
 			c.clientID = conf.ClientID
-		}
-		if conf.ClientSecret != "" {
 			c.clientSecret = conf.ClientSecret
+			c.conn = c.conn.SetBasicAuth(conf.ClientID, conf.ClientSecret)
 		}
 	}
 }
@@ -111,6 +110,7 @@ func WithOAuthClient(id, secret string) ClientOption {
 	return func(c *Client) {
 		c.clientID = id
 		c.clientSecret = secret
+		c.conn = c.conn.SetBasicAuth(id, secret)
 	}
 }
 
