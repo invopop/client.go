@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
+	github.com/a-h/templ v0.3.833
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.4
 	github.com/go-resty/resty/v2 v2.13.1
