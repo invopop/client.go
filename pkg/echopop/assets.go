@@ -26,7 +26,7 @@ const (
 // identify the file's location. Output assumes that sources are from the root,
 // for example, the above method might produce:
 //
-//	<script src="/scripts/app.js?12345678"></script>
+//	<script src="/scripts/app.js?v=12345678"></script>
 //
 // A simple version cache is used, and will only be renewed upon reloading
 // the application. Paths must be unique for this to work correctly.
