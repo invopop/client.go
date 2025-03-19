@@ -71,7 +71,7 @@ func (s *SiloMetaService) FetchByRef(ctx context.Context, key, ref string) (*Sil
 	return m, s.client.get(ctx, p, m)
 }
 
-// Upsert with either create a new meta row or update an existing one. The key of the SiloMeta
+// Upsert will either create a new meta row or update an existing one. The key of the SiloMeta
 // row will be used to upload.
 func (s *SiloMetaService) Upsert(ctx context.Context, req *UpsertSiloMeta) (*SiloMeta, error) {
 	if req.Key == "" {
