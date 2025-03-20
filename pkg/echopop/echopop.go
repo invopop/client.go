@@ -11,12 +11,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Context keys
 const (
-	enrollmentKey      = "enrollment"
-	enrollmentStateKey = "state"
-	invopopClientKey   = "invopop-client"
-	// HeaderEnrollmentID is the header key used to pass the enrollment ID
-	HeaderEnrollmentID = "X-Enrollment-ID"
+	EnrollmentKey      = "enrollment"
+	EnrollmentStateKey = "state"
+	InvopopClientKey   = "invopop-client"
 )
 
 // AuthEnrollment defines a middleware function that will authenticate
@@ -45,7 +44,7 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 			}
 			if tok == "" {
 				// try to use OAuth 2.0 state query param
-				tok = c.QueryParam(enrollmentStateKey)
+				tok = c.QueryParam(EnrollmentStateKey)
 			}
 			if tok == "" {
 				return echo.NewHTTPError(http.StatusUnauthorized, "missing auth token")
@@ -58,84 +57,24 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 			if err != nil {
 				return err
 			}
-			c.Set(enrollmentKey, e)
-			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
+			c.Set(EnrollmentKey, e)
+			c.Set(InvopopClientKey, ic.SetAuthToken(e.Token))
 
 			return next(c)
 		}
 	}
 
-}
-
-// AuthToken defines a middleware function that will check if the
-// header contains an authentication token.
-//
-// If it does, the token will be included in the invopop client to be used
-// to authenticate requests to the API. It is thought for endpoints where an
-// oauth access token is required to access the API.
-func AuthToken(ic *invopop.Client) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			tok := ""
-
-			// extract bearer auth token
-			ah := strings.Split(c.Request().Header.Get("Authorization"), "Bearer ")
-			if len(ah) == 2 && ah[1] != "" {
-				tok = ah[1]
-			}
-			if tok == "" {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing auth token")
-			}
-
-			c.Set(invopopClientKey, ic.SetAuthToken(tok))
-
-			return next(c)
-		}
-	}
-
-}
-
-// AuthEnrollmentByID defines a middleware function that will authenticate
-// an enrollment using its ID with the Invopop API. This middleware will use
-// token caching to avoid repeated authentication requests for the same enrollment.
-//
-// This method requires the "X-Enrollment-ID" header to be set with the enrollment ID.
-// It will first try to use a cached token, and if not available or expired,
-// it will request a new token and cache it.
-func AuthEnrollmentByID(ic *invopop.Client) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			ctx := c.Request().Context()
-
-			// Get enrollment ID from header
-			enrollmentID := c.Request().Header.Get("X-Enrollment-ID")
-			if enrollmentID == "" {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing enrollment ID")
-			}
-
-			e, err := ic.Access().Enrollment().AuthorizeWithID(ctx, enrollmentID)
-			if err != nil {
-				return err
-			}
-
-			// Store the authorized client in context
-			c.Set(enrollmentKey, e)
-			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
-
-			return next(c)
-		}
-	}
 }
 
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
-	return c.Get(enrollmentKey).(*invopop.Enrollment)
+	return c.Get(EnrollmentKey).(*invopop.Enrollment)
 }
 
 // GetClient provides the Invopop client that was prepared with
 // the enrollment's auth token.
 func GetClient(c echo.Context) *invopop.Client {
-	return c.Get(invopopClientKey).(*invopop.Client)
+	return c.Get(InvopopClientKey).(*invopop.Client)
 }
 
 // Render will render the provided Templ Component.
