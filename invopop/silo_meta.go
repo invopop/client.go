@@ -81,3 +81,28 @@ func (s *SiloMetaService) Upsert(ctx context.Context, req *UpsertSiloMeta) (*Sil
 	m := new(SiloMeta)
 	return m, s.client.put(ctx, p, req, m)
 }
+
+// Delete will delete a meta row by its key.
+func (s *SiloMetaService) Delete(ctx context.Context, entryID, key string) (*SiloMeta, error) {
+	if entryID == "" {
+		return nil, errors.New("missing entry ID")
+	}
+	if key == "" {
+		return nil, errors.New("missing key")
+	}
+	m := new(SiloMeta)
+	return m, s.client.delete(ctx, path.Join(siloBasePath, entriesPath, entryID, metaPath, key), m)
+}
+
+// DeleteByRef will delete a meta row by its reference value. The ref is used as an
+// alternative to the entry ID.
+func (s *SiloMetaService) DeleteByRef(ctx context.Context, key, ref string) (*SiloMeta, error) {
+	if key == "" {
+		return nil, errors.New("missing key")
+	}
+	if ref == "" {
+		return nil, errors.New("missing ref")
+	}
+	m := new(SiloMeta)
+	return m, s.client.delete(ctx, path.Join(siloBasePath, entriesPath, metaPath, key, ref), m)
+}
