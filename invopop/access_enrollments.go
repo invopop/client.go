@@ -49,9 +49,9 @@ type authorizeEnrollment struct {
 type createEnrollment struct {
 	ID           string          `param:"id" title:"ID" description:"UUIDv7 of the new enrollment to create." example:"01950020-daef-7d75-b1ba-33e7e392a658"`
 	OwnerID      string          `json:"owner_id" title:"Owner ID" description:"Workspace ID to associate with the enrollment."`
+	Data         json.RawMessage `json:"data" title:"Data" description:"Additional data associated with the enrollment." example:"{\"key\":\"value\"}"`
 	ClientID     string          `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"XzhLPeXCi3GBVg"`
 	ClientSecret string          `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"p2NWtVpuDxDYt41crWUBmQKaE4Mh92roDxp_8UKkIJY"`
-	Data         json.RawMessage `json:"data" title:"Data" description:"Additional data associated with the enrollment." example:"{\"key\":\"value\"}"`
 }
 
 // UpdateEnrollment defines the request body for updating an enrollment.
@@ -114,7 +114,8 @@ func (s *EnrollmentService) Update(ctx context.Context, req *UpdateEnrollment) (
 	return e, s.client.post(ctx, p, req, e)
 }
 
-// Create will create an enrollment between a workspace and an application.
+// Create will create an enrollment between a workspace and an application. For this action
+// to be accepted by the API, an auth token for the user's OAuth session must be included.
 func (s *EnrollmentService) Create(ctx context.Context, ownerID string) (*Enrollment, error) {
 	enrollmentID := uuid.V7().String()
 	p := path.Join(accessBasePath, enrollmentPath, enrollmentID)
