@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+
+	"github.com/invopop/gobl/uuid"
 )
 
 const (
@@ -40,6 +42,16 @@ type authorizeEnrollment struct {
 	OwnerID      string `json:"owner_id,omitempty" title:"Owner ID" description:"The ID of the entity that owns the enrollment. It is essential this is provided from a trusted source or an auth token is provided in the headers." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	ClientID     string `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"CvI6CIygjGP10g"`
 	ClientSecret string `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"YSKIfGaUrEdDFK_NPGO-Yj1oVDJcjV15N4hHbuAEg2c"`
+}
+
+// createEnrollment is used by apps to create an enrollment on behalf of
+// an end user after choosing a workspace.
+type createEnrollment struct {
+	ID           string          `param:"id" title:"ID" description:"UUIDv7 of the new enrollment to create." example:"01950020-daef-7d75-b1ba-33e7e392a658"`
+	OwnerID      string          `json:"owner_id" title:"Owner ID" description:"Workspace ID to associate with the enrollment."`
+	Data         json.RawMessage `json:"data" title:"Data" description:"Additional data associated with the enrollment." example:"{\"key\":\"value\"}"`
+	ClientID     string          `json:"client_id" title:"Client ID" description:"The ID of the application that is being enrolled." example:"XzhLPeXCi3GBVg"`
+	ClientSecret string          `json:"client_secret" title:"Client Secret" description:"The secret key of the application that is being enrolled." example:"p2NWtVpuDxDYt41crWUBmQKaE4Mh92roDxp_8UKkIJY"`
 }
 
 // UpdateEnrollment defines the request body for updating an enrollment.
@@ -100,4 +112,20 @@ func (s *EnrollmentService) Update(ctx context.Context, req *UpdateEnrollment) (
 	p := path.Join(accessBasePath, enrollmentPath)
 	e := new(Enrollment)
 	return e, s.client.post(ctx, p, req, e)
+}
+
+// Create will create an enrollment between a workspace and an application. For this action
+// to be accepted by the API, an auth token for the user's OAuth session must be included.
+func (s *EnrollmentService) Create(ctx context.Context, ownerID string) (*Enrollment, error) {
+	enrollmentID := uuid.V7().String()
+	p := path.Join(accessBasePath, enrollmentPath, enrollmentID)
+
+	req := &createEnrollment{
+		ID:           enrollmentID,
+		OwnerID:      ownerID,
+		ClientID:     s.client.clientID,
+		ClientSecret: s.client.clientSecret,
+	}
+	e := new(Enrollment)
+	return e, s.client.put(ctx, p, req, e)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Context keys
 const (
 	enrollmentKey      = "enrollment"
 	enrollmentStateKey = "state"
