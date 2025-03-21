@@ -93,16 +93,3 @@ func (s *SiloMetaService) Delete(ctx context.Context, entryID, key string) (*Sil
 	m := new(SiloMeta)
 	return m, s.client.delete(ctx, path.Join(siloBasePath, entriesPath, entryID, metaPath, key), m)
 }
-
-// DeleteByRef will delete a meta row by its reference value. The ref is used as an
-// alternative to the entry ID.
-func (s *SiloMetaService) DeleteByRef(ctx context.Context, key, ref string) (*SiloMeta, error) {
-	if key == "" {
-		return nil, errors.New("missing key")
-	}
-	if ref == "" {
-		return nil, errors.New("missing ref")
-	}
-	m := new(SiloMeta)
-	return m, s.client.delete(ctx, path.Join(siloBasePath, entriesPath, metaPath, key, ref), m)
-}
