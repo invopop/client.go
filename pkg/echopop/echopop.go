@@ -13,9 +13,9 @@ import (
 
 // Context keys
 const (
-	EnrollmentKey      = "enrollment"
-	EnrollmentStateKey = "state"
-	InvopopClientKey   = "invopop-client"
+	enrollmentKey      = "enrollment"
+	enrollmentStateKey = "state"
+	invopopClientKey   = "invopop-client"
 )
 
 // AuthEnrollment defines a middleware function that will authenticate
@@ -44,7 +44,7 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 			}
 			if tok == "" {
 				// try to use OAuth 2.0 state query param
-				tok = c.QueryParam(EnrollmentStateKey)
+				tok = c.QueryParam(enrollmentStateKey)
 			}
 			if tok == "" {
 				return echo.NewHTTPError(http.StatusUnauthorized, "missing auth token")
@@ -57,8 +57,8 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 			if err != nil {
 				return err
 			}
-			c.Set(EnrollmentKey, e)
-			c.Set(InvopopClientKey, ic.SetAuthToken(e.Token))
+			c.Set(enrollmentKey, e)
+			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
 
 			return next(c)
 		}
@@ -68,13 +68,13 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
-	return c.Get(EnrollmentKey).(*invopop.Enrollment)
+	return c.Get(enrollmentKey).(*invopop.Enrollment)
 }
 
 // GetClient provides the Invopop client that was prepared with
 // the enrollment's auth token.
 func GetClient(c echo.Context) *invopop.Client {
-	return c.Get(InvopopClientKey).(*invopop.Client)
+	return c.Get(invopopClientKey).(*invopop.Client)
 }
 
 // Render will render the provided Templ Component.
