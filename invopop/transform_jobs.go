@@ -110,7 +110,11 @@ func (svc *JobsService) Create(ctx context.Context, req *CreateJob) (*Job, error
 		p = fmt.Sprintf("%s?wait=%d", p, req.Wait)
 	}
 	m := new(Job)
-	return m, svc.client.put(ctx, p, req, m)
+	if req.ID != "" {
+		return m, svc.client.put(ctx, p, req, m)
+	} else {
+		return m, svc.client.post(ctx, p, req, m)
+	}
 }
 
 // Fetch fetches the latest job results.
