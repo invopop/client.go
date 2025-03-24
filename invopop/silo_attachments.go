@@ -3,6 +3,7 @@ package invopop
 import (
 	"context"
 	"errors"
+	"io"
 	"path"
 
 	"github.com/invopop/gobl/uuid"
@@ -81,4 +82,26 @@ func (s *SiloAttachmentsService) Create(ctx context.Context, req *CreateSiloAtta
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloAttachmentsPath, req.ID)
 	m := new(SiloAttachment)
 	return m, s.client.put(ctx, p, req, m)
+}
+
+// Download provides a reader to be able to fetch the attachment's raw contents.
+func (s *SiloAttachmentsService) Download(ctx context.Context, entryID, id string) (io.ReadCloser, error) {
+	if id == "" {
+		return nil, errors.New("missing id")
+	}
+	if entryID == "" {
+		return nil, errors.New("missing entry_id")
+	}
+
+	p := path.Join(siloBasePath, entriesPath, entryID, siloAttachmentsPath, id)
+	re := new(ResponseError)
+	res, err := s.client.conn.R().
+		SetContext(ctx).
+		SetDoNotParseResponse(true).
+		SetError(re).
+		Get(p)
+	if err != nil {
+		return nil, err
+	}
+	return res.RawBody(), nil
 }
