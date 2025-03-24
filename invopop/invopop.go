@@ -198,3 +198,16 @@ func (c *Client) patch(ctx context.Context, path string, in, out any) error {
 	}
 	return re.handle(res)
 }
+
+func (c *Client) delete(ctx context.Context, path string, result interface{}) error {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetError(re).
+		SetResult(result).
+		Delete(path)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
+}

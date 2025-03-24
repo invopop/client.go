@@ -71,7 +71,7 @@ func (s *SiloMetaService) FetchByRef(ctx context.Context, key, ref string) (*Sil
 	return m, s.client.get(ctx, p, m)
 }
 
-// Upsert with either create a new meta row or update an existing one. The key of the SiloMeta
+// Upsert will either create a new meta row or update an existing one. The key of the SiloMeta
 // row will be used to upload.
 func (s *SiloMetaService) Upsert(ctx context.Context, req *UpsertSiloMeta) (*SiloMeta, error) {
 	if req.Key == "" {
@@ -80,4 +80,16 @@ func (s *SiloMetaService) Upsert(ctx context.Context, req *UpsertSiloMeta) (*Sil
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, metaPath, req.Key)
 	m := new(SiloMeta)
 	return m, s.client.put(ctx, p, req, m)
+}
+
+// Delete will delete a meta row by its key.
+func (s *SiloMetaService) Delete(ctx context.Context, entryID, key string) (*SiloMeta, error) {
+	if entryID == "" {
+		return nil, errors.New("missing entry ID")
+	}
+	if key == "" {
+		return nil, errors.New("missing key")
+	}
+	m := new(SiloMeta)
+	return m, s.client.delete(ctx, path.Join(siloBasePath, entriesPath, entryID, metaPath, key), m)
 }

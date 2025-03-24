@@ -12,6 +12,11 @@ func (svc *SiloService) Entries() *SiloEntriesService {
 	return (*SiloEntriesService)(svc)
 }
 
+// Attachments provides a wrapper around silo entry attachment methods.
+func (svc *SiloService) Attachments() *SiloAttachmentsService {
+	return (*SiloAttachmentsService)(svc)
+}
+
 // Meta provides a wrapper around silo meta methods.
 func (svc *SiloService) Meta() *SiloMetaService {
 	return (*SiloMetaService)(svc)
