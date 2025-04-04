@@ -75,6 +75,8 @@ message TaskResult {
 	TaskStatus status = 1;
 	// optional provider response code
 	string code = 2;
+	// Additional arguments that the task would like to supply to -next- steps
+	map<string, string> args = 14;
 	// human response message
 	string message = 3;
 	// reference that can be used to identify the job later such
