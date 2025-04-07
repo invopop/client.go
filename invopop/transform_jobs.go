@@ -25,7 +25,7 @@ type Job struct {
 	WorkflowID  string `json:"workflow_id"`
 
 	Key  string            `json:"key,omitempty" title:"Key" description:"Key assigned to the job, used to identify it in the system."`
-	Meta map[string]string `json:"meta,omitempty" title:"Meta" description:"Any additional data that might be relevant for processing."`
+	Args map[string]string `json:"args,omitempty" title:"Args" description:"Any additional arguments that might be relevant for processing."`
 	Tags []string          `json:"tags,omitempty" title:"Tags" description:"Any tags that may be useful to be associated with the job."`
 
 	CompletedAt string `json:"completed_at,omitempty"`
@@ -76,11 +76,12 @@ type JobIntent struct {
 
 // JobIntentEvent represents the state and history of executing an intent.
 type JobIntentEvent struct {
-	Index   int32  `json:"index"`
-	Status  string `json:"status"`
-	At      string `json:"at"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+	Index   int32             `json:"index"`
+	Status  string            `json:"status"`
+	At      string            `json:"at"`
+	Code    string            `json:"code,omitempty"`
+	Args    map[string]string `json:"args,omitempty"`
+	Message string            `json:"message,omitempty"`
 }
 
 // CreateJob is used to create new jobs
@@ -88,13 +89,13 @@ type CreateJob struct {
 	ID         string `json:"-"`
 	WorkflowID string `json:"workflow_id" form:"workflow_id" title:"Workflow ID" description:"WorkflowID description"`
 
-	// Either Silo Entry ID, Data (complete envelope or document), Key and Meta are
+	// Either Silo Entry ID, Data (complete envelope or document), Key and Args are
 	// required in order to create a job.
 	// If any combination are provided, Silo Entry ID will take priority, followed by data.
 	SiloEntryID string            `json:"silo_entry_id,omitempty" form:"silo_entry_id" title:"Silo Entry ID" description:"ID for the entry in the silo as an alternative for the raw data object."`
 	Data        json.RawMessage   `json:"data,omitempty" form:"data" title:"Data" description:"Raw JSON data of the GOBL Envelope or Object when the Silo Entry ID is empty."`
 	Key         string            `json:"key,omitempty" form:"key" title:"Key" description:"Idempotency key to ensure that only one job will be created with this value."`
-	Meta        map[string]string `json:"meta,omitempty" form:"meta" title:"Meta" description:"Additional data to associate with the job."`
+	Args        map[string]string `json:"args,omitempty" form:"args" title:"Arguments" description:"Additional arguments to associate with the job and may be used by actions."`
 
 	Tags []string `json:"tags,omitempty" form:"tags" title:"Tags" description:"Tags to associate with the job."`
 

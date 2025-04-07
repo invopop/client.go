@@ -24,9 +24,9 @@ message Task {
 	string id = 1;
 	string job_id = 2;
 	string job_key = 17;
-	map <string, string> job_meta = 18;
 	string silo_entry_id = 3; // was previously envelope_id
 	string owner_id = 9; // May be used for authentication
+	map <string, string> args = 18;
 	string ref = 10; // If provided in a previous request, will be here too
 	string action = 12; // Action to be performed by the provider.
 	bool sandbox = 16; // If true, execute in sandbox environment.
@@ -75,6 +75,8 @@ message TaskResult {
 	TaskStatus status = 1;
 	// optional provider response code
 	string code = 2;
+	// Additional arguments that the task would like to supply to -next- steps
+	map<string, string> args = 14;
 	// human response message
 	string message = 3;
 	// reference that can be used to identify the job later such
