@@ -29,6 +29,9 @@ type SiloMeta struct {
 	Value     json.RawMessage `json:"value,omitempty" title:"Value" description:"The JSON data stored with the meta row." example:"{\"key\": \"value\"}"`
 	LinkURL   string          `json:"link_url,omitempty" title:"Link URL" description:"URL associated with the meta row that may be used to perform additional actions or view more details." example:"https://example.com/info"`
 	LinkScope string          `json:"link_scope,omitempty" title:"Link Scope" description:"Describes the context in which the link should be made available." example:"public"`
+	Indexed   bool            `json:"indexed,omitempty" title:"Indexed" description:"When true, the meta entry is indexed for search." example:"true"`
+	Owned     bool            `json:"owned,omitempty" title:"Owned" description:"When true, the meta entry is indexed by owner ID." example:"true"`
+	Secure    bool            `json:"secure,omitempty" title:"Secure" description:"When true, the meta entry is never included in lists and needs to be specifically requested." example:"true"`
 	Shared    bool            `json:"shared,omitempty" title:"Shared" description:"When true, the meta entry can be shared with other applications." example:"true"`
 }
 
@@ -41,6 +44,7 @@ type UpsertSiloMeta struct {
 	LinkURL   string          `json:"url,omitempty" title:"Link URL" description:"URL associated with the meta row that may be used to perform additional actions or view more details." example:"https://example.com/info"`
 	LinkScope string          `json:"scope,omitempty" title:"Link Scope" description:"Describes the context in which the link should be made available." example:"public"`
 	Indexed   bool            `json:"indexed,omitempty" title:"Indexed" description:"When true, the meta entry is indexed for search." example:"true"`
+	Owned     bool            `json:"owned,omitempty" title:"Owned" description:"When true, the meta entry is indexed by owner ID." example:"true"`
 	Secure    bool            `json:"secure,omitempty" title:"Secure" description:"When true, the meta entry is never included in lists and needs to be specifically requested." example:"true"`
 	Shared    bool            `json:"shared,omitempty" title:"Shared" description:"When true, the meta entry can be shared with other applications." example:"true"`
 }
