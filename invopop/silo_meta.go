@@ -75,6 +75,20 @@ func (s *SiloMetaService) FetchByRef(ctx context.Context, key, ref string) (*Sil
 	return m, s.client.get(ctx, p, m)
 }
 
+// FetchByOwnerAndRef retrieves a meta row by its reference value filtered by
+// the authentication token's owner.
+func (s *SiloMetaService) FetchByOwnerAndRef(ctx context.Context, key, ref string) (*SiloMeta, error) {
+	if key == "" {
+		return nil, errors.New("missing key")
+	}
+	if ref == "" {
+		return nil, errors.New("missing ref")
+	}
+	p := path.Join(siloBasePath, entriesPath, metaPath, key, ref) + "?owned=true"
+	m := new(SiloMeta)
+	return m, s.client.get(ctx, p, m)
+}
+
 // Upsert will either create a new meta row or update an existing one. The key of the SiloMeta
 // row will be used to upload.
 func (s *SiloMetaService) Upsert(ctx context.Context, req *UpsertSiloMeta) (*SiloMeta, error) {
