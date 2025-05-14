@@ -70,7 +70,7 @@ func New(opts ...ClientOption) *Client {
 
 	c.conn = resty.New().
 		SetBaseURL(productionHost).
-		SetDisableWarn(true)
+		SetDisableWarn(true) // avoid no-SSL connection warnings
 
 	for _, opt := range opts {
 		opt(c)
