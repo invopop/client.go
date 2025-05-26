@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/flimzy/testy"
+	"resty.dev/v3"
 )
 
 func Test_put(t *testing.T) {

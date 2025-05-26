@@ -26,3 +26,8 @@ func (svc *SiloService) Meta() *SiloMetaService {
 func (svc *SiloService) GOBL() *SiloGOBLService {
 	return (*SiloGOBLService)(svc)
 }
+
+// Spool provides a wrapper for the Silo's Spool resource.
+func (svc *SiloService) Spool() *SiloSpoolService {
+	return (*SiloSpoolService)(svc)
+}

@@ -8,7 +8,6 @@ require (
 	github.com/a-h/templ v0.3.833
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.4
-	github.com/go-resty/resty/v2 v2.13.1
 	github.com/invopop/configure v0.6.0
 	github.com/invopop/gobl v0.113.0
 	github.com/labstack/echo/v4 v4.12.0
@@ -20,6 +19,7 @@ require (
 	gitlab.com/flimzy/testy v0.14.0
 	golang.org/x/sync v0.11.0
 	google.golang.org/protobuf v1.33.0
+	resty.dev/v3 v3.0.0-beta.3
 )
 
 require (
