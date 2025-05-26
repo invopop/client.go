@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-resty/resty/v2"
+	"resty.dev/v3"
 )
 
 // Client manages communication with the Invopop API.
@@ -29,7 +29,7 @@ const (
 
 // HTTPClient returns the underlying HTTP client (useful for mocking).
 func (c *Client) HTTPClient() *http.Client {
-	return c.conn.GetClient()
+	return c.conn.Client()
 }
 
 // Utils provides access to the utils service.
@@ -122,7 +122,7 @@ func WithOAuthClient(id, secret string) ClientOption {
 // sessions.
 func (c *Client) SetAuthToken(token string) *Client {
 	c2 := *c
-	c2.conn = c2.conn.Clone().SetAuthToken(token)
+	c2.conn = c2.conn.Clone(context.Background()).SetAuthToken(token)
 	c2.svc = &service{client: &c2}
 	return &c2
 }

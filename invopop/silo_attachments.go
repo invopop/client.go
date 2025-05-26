@@ -103,5 +103,5 @@ func (s *SiloAttachmentsService) Download(ctx context.Context, entryID, id strin
 	if err != nil {
 		return nil, err
 	}
-	return res.RawBody(), re.handle(res)
+	return res.Body, re.handle(res)
 }
