@@ -68,13 +68,19 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
-	return c.Get(enrollmentKey).(*invopop.Enrollment)
+	if en, ok := c.Get(enrollmentKey).(*invopop.Enrollment); !ok {
+		return en
+	}
+	return nil
 }
 
 // GetClient provides the Invopop client that was prepared with
 // the enrollment's auth token.
 func GetClient(c echo.Context) *invopop.Client {
-	return c.Get(invopopClientKey).(*invopop.Client)
+	if c, ok := c.Get(invopopClientKey).(*invopop.Client); ok {
+		return c
+	}
+	return nil
 }
 
 // Render will render the provided Templ Component.
