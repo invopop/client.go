@@ -60,6 +60,7 @@ message Fault {
 	string provider = 1;
 	string code = 2;
 	string message = 3;
+	bytes fields = 4; // JSON encoded list of validation errors
 }
 
 // Meta represents a simplified Silo Meta row.
@@ -80,19 +81,22 @@ message TaskResult {
 	map<string, string> args = 14;
 	// human response message
 	string message = 3;
+	// fields contains a JSON encoded set of nested field validation errors defined
+	// by the `gobl.FieldErrors` type.
+	bytes fields = 15;
 	// reference that can be used to identify the job later such
 	// as in a poke request.
 	string ref = 11;
-	// sign when true, will ensure the envelope is signed 
+	// sign when true, will ensure the envelope is signed
 	bool sign = 12;
 	// envelope data either complete or patched according to content_type
-	bytes data = 9; 
+	bytes data = 9;
 	// Content type of data to send to the silo
 	string content_type = 10;
 	// For QUEUED or ERR response, how long to wait to try again (optional).
 	int32 retry_in = 6;
 	// Optional Silo Entry ID to be used when a new silo entry was created
-	// by this task, and it should be used for all subsequent actions in 
+	// by this task, and it should be used for all subsequent actions in
 	// the workflow. If data is also included, the silo entry will be created.
 	optional string silo_entry_id = 13;
 }
