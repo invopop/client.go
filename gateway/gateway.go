@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -153,11 +154,34 @@ func (gw *Client) processTask(m *nats.Msg) {
 	if err := proto.Unmarshal(m.Data, t); err != nil {
 		res = TaskError(fmt.Errorf("parsing incoming task: %w", err))
 	} else {
-		res = gw.th(ctx, t)
-		if res == nil {
-			// assume the response is okay if no content
-			res = TaskOK()
-		}
+		// Handle panics from task handler
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Get stack trace for debugging
+					stack := debug.Stack()
+
+					// Log the panic with full details for monitoring
+					log.Error().
+						Str("task_id", t.Id).
+						Str("action", t.Action).
+						Str("trace", string(stack)).
+						Str("job_id", t.JobId).
+						Str("owner_id", t.OwnerId).
+						Str("silo_entry_id", t.SiloEntryId).
+						Msgf("[PANIC RECOVERED] %v", r)
+
+					// Convert panic to user-friendly TaskError
+					res = TaskError(fmt.Errorf("unexpected error"))
+				}
+			}()
+
+			res = gw.th(ctx, t)
+			if res == nil {
+				// assume the response is okay if no content
+				res = TaskOK()
+			}
+		}()
 	}
 
 	// Send the reply back
