@@ -171,8 +171,10 @@ func (gw *Client) processTask(m *nats.Msg) {
 						Str("silo_entry_id", t.SiloEntryId).
 						Msgf("[PANIC RECOVERED] %v", r)
 
-					// Convert panic to user-friendly TaskError
-					res = TaskError(fmt.Errorf("unexpected error"))
+					// Convert panic to user-friendly TaskKO so that we stop any
+					// future retries. We assume here that retrying will not work
+					// until the underlying issue is fixed.
+					res = TaskKO(fmt.Errorf("unexpected data error"))
 				}
 			}()
 
