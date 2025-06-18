@@ -53,28 +53,38 @@ func (r *ResponseError) Response() *resty.Response {
 	return r.response
 }
 
-// IsConflict is a helper that will provide the response error object
-// if the error is a conflict.
-func IsConflict(err error) *ResponseError {
-	return isError(err, http.StatusConflict)
+// IsConflict is a helper that will return true if the response error is
+// a conflict.
+func IsConflict(err error) bool {
+	return asError(err, http.StatusConflict) != nil
 }
 
-// IsNotFound returns the error response if the status is not found.
-func IsNotFound(err error) *ResponseError {
-	return isError(err, http.StatusNotFound)
+// IsNotFound is a helper that will return true if the response error is
+// a not found.
+func IsNotFound(err error) bool {
+	return asError(err, http.StatusNotFound) != nil
 }
 
-// IsForbidden returns the error response if the status is forbidden.
-func IsForbidden(err error) *ResponseError {
-	return isError(err, http.StatusForbidden)
+// IsForbidden is a helper that will return true if the response error is
+// a forbidden.
+func IsForbidden(err error) bool {
+	return asError(err, http.StatusForbidden) != nil
 }
 
-func isError(err error, status int) *ResponseError {
+// AsResponseError will extract the ResponseError from the provided error
+// or return nil if no match found.
+func AsResponseError(err error) *ResponseError {
 	var re *ResponseError
 	if errors.As(err, &re) {
-		if re.StatusCode() == status {
-			return re
-		}
+		return re
+	}
+	return nil
+}
+
+func asError(err error, status int) *ResponseError {
+	re := AsResponseError(err)
+	if re.StatusCode() == status {
+		return re
 	}
 	return nil
 }
