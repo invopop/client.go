@@ -9,14 +9,13 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 
 	"github.com/foolin/goview"
 	echoview "github.com/foolin/goview/supports/echoview-v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/ziflex/lecho/v3"
 )
 
 // Service provides a wrapper around Echo that makes it a bit easier
@@ -32,15 +31,7 @@ func NewService() *Service {
 		echo: echo.New(),
 	}
 
-	lvl, _ := lecho.MatchZeroLevel(zerolog.DebugLevel)
-	logger := lecho.From(
-		log.Logger,
-		lecho.WithLevel(lvl),
-		lecho.WithTimestamp(),
-		// lecho.WithCaller(), // useful for debugging
-	)
-	s.echo.Logger = logger
-	s.echo.Use(lecho.Middleware(lecho.Config{Logger: logger}))
+	s.echo.Use(logRequest())
 	s.echo.Use(middleware.Recover())
 
 	return s
@@ -131,4 +122,28 @@ func (s *Service) Start(port string) error {
 // includes a timeout.
 func (s *Service) Stop(ctx context.Context) error {
 	return s.echo.Shutdown(ctx)
+}
+
+func logRequest() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			tn := time.Now()
+			req := c.Request()
+			err := next(c)
+			res := c.Response()
+
+			log.Debug().
+				Str("method", req.Method).
+				Str("host", req.Host).
+				Str("user_agent", req.UserAgent()).
+				Dur("latency", time.Since(tn)).
+				Int64("bytes_in", req.ContentLength).
+				Int64("bytes_out", res.Size).
+				Int("status", res.Status).
+				Err(err).
+				Msgf("%s %s", req.Method, req.RequestURI)
+
+			return err
+		}
+	}
 }
