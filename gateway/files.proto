@@ -7,15 +7,23 @@ import "errors.proto";
 
 message File {
 	string id = 1;
-	string silo_entry_id = 7;
+	string created_at = 3;
+	string entry_id = 5;
+
+	string name = 6;
+	string description = 7;
+
 	string hash = 8;
-	string name = 2;
-	string desc = 9;
-	string mime = 3;
-	string public_url = 4;
-	map<string,string> meta = 5;
-	bool uploaded = 6; // True if the file data has been uploaded.
-	bool embeddable = 10; // Can this file be embedded inside others, like PDFs?
+	string mime = 9;
+	int32 size = 10;
+	bool embeddable = 15;
+
+	string stored_at = 11;
+
+	map<string,string> meta = 12;
+	repeated string sigs = 13;
+
+	string url = 14;
 }
 
 message CreateFile {
@@ -30,7 +38,7 @@ message CreateFile {
 	string sha256 = 6;
 	string mime = 7;
 	int32 size = 8;
-	
+
 	map<string,string> meta = 9;
 }
 

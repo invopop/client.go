@@ -123,7 +123,7 @@ func (gw *Client) fileUploadURL(f *File) (string, error) {
 	}
 	return fmt.Sprintf("%s/%s/%s/%s?h=%s",
 		gw.siloPublicBaseURL,
-		f.SiloEntryId,
+		f.EntryId,
 		f.Id,
 		f.Name,
 		f.Hash,
