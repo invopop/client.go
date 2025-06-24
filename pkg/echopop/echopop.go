@@ -68,7 +68,7 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 
 // GetEnrollment retrieves the enrollment object from the context.
 func GetEnrollment(c echo.Context) *invopop.Enrollment {
-	if en, ok := c.Get(enrollmentKey).(*invopop.Enrollment); !ok {
+	if en, ok := c.Get(enrollmentKey).(*invopop.Enrollment); ok {
 		return en
 	}
 	return nil
