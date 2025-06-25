@@ -109,6 +109,7 @@ func (gw *Client) Start() error {
 	if err := gw.subscribeIncomingTasks(); err != nil {
 		return fmt.Errorf("subscribing for tasks: %w", err)
 	}
+	log.Debug().Int("count", gw.workerCount).Msg("gateway: starting workers")
 	for i := 0; i < gw.workerCount; i++ {
 		go gw.startTaskWorker()
 	}
@@ -117,12 +118,17 @@ func (gw *Client) Start() error {
 
 // Stop is used to gracefully drain all requests and wait for them to complete.
 func (gw *Client) Stop() {
+	tn := time.Now()
+	log.Debug().Msg("gateway: shutting down")
+
 	if gw.sub != nil {
 		gw.sub.Unsubscribe() // nolint:errcheck
 		gw.sub.Drain()       // nolint:errcheck
 	}
 	close(gw.incoming) // this stops workers from receiving more
 	gw.wg.Wait()
+
+	log.Info().Dur("dur", time.Since(tn)).Msg("gateway: shutdown complete")
 }
 
 func (gw *Client) subscribeIncomingTasks() error {
@@ -213,7 +219,7 @@ func prepareNATSClient(conf *natsconf.Config, name string) *nats.Conn {
 		log.Warn().Err(err).Str("url", conf.URL).Msg("nats disconnected")
 	}))
 
-	// Create the encoded connection
+	// Create the connection
 	nc, err := nats.Connect(conf.URL, opts...)
 	if err != nil {
 		log.Fatal().Err(err).Str("url", conf.URL).Msg("failed to connect to nats")
