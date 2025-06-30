@@ -16,6 +16,7 @@ message File {
 	map<string,string> meta = 5;
 	bool uploaded = 6; // True if the file data has been uploaded.
 	bool embeddable = 10; // Can this file be embedded inside others, like PDFs?
+	bool private = 11; // Should this file not have public links?
 }
 
 message CreateFile {
@@ -26,11 +27,12 @@ message CreateFile {
 	string name = 4;
 	string desc = 5;
 	bool embeddable = 10; // can this file be embedded?
+	bool private = 11; // do not generate public links
 
 	string sha256 = 6;
 	string mime = 7;
 	int32 size = 8;
-	
+
 	map<string,string> meta = 9;
 }
 
