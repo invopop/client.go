@@ -35,10 +35,29 @@ type SiloAttachment struct {
 	Size int32 `json:"size" title:"Size" example:"12345"`
 	// When true, indicates that the file's contents have been uploaded successfully.
 	Stored bool `json:"stored" title:"Stored" example:"true"`
+	// Can this file be embedded inside other files?
+	Embeddable bool `json:"embeddable,omitempty" title:"Embeddable"`
+	// Should this file be accessible without authentication?
+	Private bool `json:"private,omitempty" title:"Private"`
 	// Public URL where the file can be downloaded.
 	URL string `json:"url" title:"Public URL"` // public URL
 	// Any additional meta data about the attachment.
 	Meta map[string]string `json:"meta,omitempty" title:"Meta"`
+	// Previous version of the attachment.
+	Previous []*SiloAttachmentVersion `json:"previous,omitempty" title:"Previous"`
+}
+
+// SiloAttachmentVersion contains a single version of a previously uploaded
+// attachment.
+type SiloAttachmentVersion struct {
+	// ID of the attachment version
+	ID string `json:"id" title:"ID"`
+	// When the attachment was created
+	CreatedAt string `json:"created_at" title:"Created At"`
+	// SHA256 of the file's data.
+	Hash string `json:"hash" title:"Hash"`
+	// Size of the payload.
+	Size int32 `json:"size" title:"Size"`
 }
 
 // CreateSiloAttachment can be used to upload a new file to a silo entry.
@@ -59,6 +78,8 @@ type CreateSiloAttachment struct {
 	// included inside other attachments. Useful for example to embed XML
 	// documents inside PDFs.
 	Embeddable bool `json:"embeddable,omitempty" title:"Embeddable"`
+	// When true, do not generate publically accessible links to the attachment.
+	Private bool `json:"private,omitempty" title:"Private"`
 	// Any additional meta data about the attachment.
 	Meta map[string]string `json:"meta,omitempty" title:"Meta"`
 }
