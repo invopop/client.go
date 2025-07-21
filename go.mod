@@ -8,17 +8,16 @@ require (
 	github.com/a-h/templ v0.3.833
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.4
-	github.com/invopop/configure v0.7.1
+	github.com/invopop/configure v0.8.0
 	github.com/invopop/gobl v0.113.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/magefile/mage v1.15.0
-	github.com/nats-io/nats.go v1.37.0
-	github.com/rs/zerolog v1.33.0
+	github.com/nats-io/nats.go v1.43.0
+	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.10.0
-	github.com/ziflex/lecho/v3 v3.5.0
 	gitlab.com/flimzy/testy v0.14.0
 	golang.org/x/sync v0.14.0
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.36.6
 	resty.dev/v3 v3.0.0-beta.3
 )
 
@@ -34,13 +33,13 @@ require (
 	github.com/invopop/validation v0.7.0 // indirect
 	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
-	github.com/klauspost/compress v1.17.2 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
