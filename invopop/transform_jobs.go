@@ -144,7 +144,7 @@ func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error
 }
 
 // UpdateIntent is a special endpoint only usable by enrolled applications to update the status
-// of a Job's intent during processing. Typcially this is used to poke an intent that is queued.
+// of a Job's intent during processing. Typically this is used to poke an intent that is queued.
 // This can only currently be used enrolled applications.
 func (svc *JobsService) UpdateIntent(ctx context.Context, req *UpdateIntent) (*JobIntent, error) {
 	p := path.Join(transformBasePath, jobsPath, intentsPath)
