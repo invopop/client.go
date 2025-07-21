@@ -9,6 +9,7 @@ import (
 
 const (
 	jobsPath    = "jobs"
+	intentsPath = "intents"
 	jobsKeyPath = "key"
 )
 
@@ -104,6 +105,16 @@ type CreateJob struct {
 	Wait int32 `json:"-"`
 }
 
+// UpdateIntent is used to issue new events for a Job's Intent while processing.
+type UpdateIntent struct {
+	ID      string `json:"id,omitempty" title:"ID" description:"UUID of the intent to update." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	JobID   string `json:"job_id,omitempty" title:"Job ID" description:"UUID of the job to update." example:"186522a6-e697-4e34-8498-eee961bcb845"`
+	Ref     string `json:"ref,omitempty" title:"Ref" description:"Reference code used to identify the intent when the id and job_id are not available."`
+	Status  string `json:"status" title:"Status" description:"Status code of the event to add to the intent" example:"POKE"`
+	Code    string `json:"code,omitempty" title:"Code" description:"Code of the event to add to the intent" example:"XX123"`
+	Message string `json:"message,omitempty" title:"Message to include alongside the new event."`
+}
+
 // Create sends a request to the API to process a job. The `WithWait` request option can
 // be used to have the server wait for a job to be completed before responding.
 func (svc *JobsService) Create(ctx context.Context, req *CreateJob) (*Job, error) {
@@ -130,4 +141,23 @@ func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error
 	p := path.Join(transformBasePath, jobsPath, jobsKeyPath, key)
 	m := new(Job)
 	return m, svc.client.get(ctx, p, m)
+}
+
+// UpdateIntent is a special endpoint only usable by enrolled applications to update the status
+// of a Job's intent during processing. Typically this is used to poke an intent that is queued.
+// This can only currently be used enrolled applications.
+func (svc *JobsService) UpdateIntent(ctx context.Context, req *UpdateIntent) (*JobIntent, error) {
+	p := path.Join(transformBasePath, jobsPath, intentsPath)
+	m := new(JobIntent)
+	return m, svc.client.post(ctx, p, req, m)
+}
+
+// PokeByRef is a convenience method that will build an UpdateIntent request for a simple
+// POKE status.
+func (svc *JobsService) PokeByRef(ctx context.Context, ref string) (*JobIntent, error) {
+	req := &UpdateIntent{
+		Ref:    ref,
+		Status: "POKE",
+	}
+	return svc.UpdateIntent(ctx, req)
 }
