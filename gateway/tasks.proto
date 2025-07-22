@@ -69,7 +69,14 @@ message Meta {
 	string src = 1;
 	string key = 2;
 	string ref = 4;
+	MetaLink link = 5;
 	bytes value = 3;
+}
+
+// MetaLink provides a link definition for a meta row.
+message MetaLink {
+  string url = 1;
+  string scope = 2;
 }
 
 // TaskResult says what we expect from a provider after attempting to complete
