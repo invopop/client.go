@@ -83,7 +83,7 @@ func AsResponseError(err error) *ResponseError {
 
 func asError(err error, status int) *ResponseError {
 	re := AsResponseError(err)
-	if re.StatusCode() == status {
+	if re != nil && re.StatusCode() == status {
 		return re
 	}
 	return nil
