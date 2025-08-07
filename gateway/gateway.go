@@ -209,15 +209,25 @@ func prepareNATSClient(conf *natsconf.Config, name string) *nats.Conn {
 		log.Fatal().Err(err).Msg("preparing nats options")
 	}
 
-	opts = append(opts, nats.Name(name))
-
-	// Add our own connection logging stuff
-	opts = append(opts, nats.ConnectHandler(func(_ *nats.Conn) {
-		log.Info().Str("url", conf.URL).Msg("nats connected")
-	}))
-	opts = append(opts, nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
-		log.Warn().Err(err).Str("url", conf.URL).Msg("nats disconnected")
-	}))
+	opts = append(opts,
+		nats.Name(name),
+		// Add our own connection logging stuff
+		nats.ConnectHandler(func(_ *nats.Conn) {
+			log.Info().Str("url", conf.URL).Msg("nats connected")
+		}),
+		nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
+			log.Warn().Str("url", conf.URL).Err(err).Msg("nats disconnected")
+		}),
+		nats.ReconnectHandler(func(_ *nats.Conn) {
+			log.Info().Str("url", conf.URL).Msg("nats reconnected")
+		}),
+		nats.ReconnectErrHandler(func(_ *nats.Conn, err error) {
+			log.Warn().Str("url", conf.URL).Err(err).Msg("nats reconnect error")
+		}),
+		nats.ClosedHandler(func(_ *nats.Conn) {
+			log.Warn().Str("url", conf.URL).Msg("nats closed")
+		}),
+	)
 
 	// Create the connection
 	nc, err := nats.Connect(conf.URL, opts...)
