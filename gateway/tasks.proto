@@ -69,6 +69,7 @@ message Meta {
 	string src = 1;
 	string key = 2;
 	string ref = 4;
+	string link_url = 5;
 	bytes value = 3;
 }
 
