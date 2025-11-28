@@ -13,6 +13,41 @@ const (
 	siloAttachmentsPath = "attachments"
 )
 
+// File category constants that match those defined in the Silo service.
+// These values are used to categorize attachments and are validated by
+// the Silo service when creating attachments.
+const (
+	// FileCategoryDefault is the blank/default category for backwards compatibility.
+	// Ideally we'll want to move away from this moving forward.
+	FileCategoryDefault = ""
+
+	// FileCategoryFormat represents alternative representations of the GOBL document,
+	// like PDF or XML files.
+	FileCategoryFormat = "format"
+
+	// FileCategoryRequest represents files that are generated as part of API calls
+	// and are only useful for future reference. They should not be sent to other users.
+	// For example, VERI*FACTU generated payloads, or other reporting information
+	// sent to tax authorities.
+	FileCategoryRequest = "request"
+
+	// FileCategoryResponse represents files received during the life cycle of the document,
+	// including confirmations from tax authorities and IRs received via Peppol.
+	FileCategoryResponse = "response"
+
+	// FileCategoryAgreement represents legal documents usually signed by third parties,
+	// such as the VERI*FACTU delegation agreement or the Peppol contract.
+	FileCategoryAgreement = "agreement"
+
+	// FileCategoryVerification represents passports, ID cards, and other proof of
+	// ownership documents used in KYC flows.
+	FileCategoryVerification = "verification"
+
+	// FileCategoryAttachment represents attachments extracted from the GOBL invoice
+	// under the attachments section.
+	FileCategoryAttachment = "attachment"
+)
+
 // SiloAttachmentsService implements the Invopop Silo API.
 type SiloAttachmentsService service
 
@@ -27,6 +62,10 @@ type SiloAttachment struct {
 	Name string `json:"name" title:"Name" example:"invoice.pdf"`
 	// Description of the file's contents.
 	Desc string `json:"desc,omitempty" title:"Description" example:"Invoice for January 2021."`
+	// Key used to identify the attachment idempotently within a silo entry.
+	Key string `json:"key,omitempty" title:"Key" example:"logo"`
+	// Category of the attachment.
+	Category string `json:"category,omitempty" title:"Category" example:"format"`
 	// SHA256 hash of the file's contents.
 	Hash string `json:"hash" title:"Hash" example:"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6"`
 	// File content's MIME type.
@@ -70,6 +109,10 @@ type CreateSiloAttachment struct {
 	Name string `json:"name" title:"Name"`
 	// Optional description of the contents
 	Desc string `json:"desc,omitempty" title:"Description"`
+	// Key used to identify the attachment idempotently within a silo entry
+	Key string `json:"key,omitempty" title:"Key"`
+	// Category of the attachment
+	Category string `json:"category,omitempty" title:"Category"`
 	// Raw file data
 	Data []byte `json:"data" title:"Data"`
 	// MIME data type, determined by server if not provided
