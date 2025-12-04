@@ -35,8 +35,8 @@ type Job struct {
 	Faults  []*Fault     `json:"faults,omitempty" title:"Faults" description:"Array of fault objects that represent errors that occurred during the processing of the job."`
 
 	// Properties returned in response after completion
-	Envelope    json.RawMessage   `json:"envelope,omitempty"`
-	Attachments []*SiloAttachment `json:"attachments,omitempty"`
+	Envelope json.RawMessage `json:"envelope,omitempty"`
+	Files    []*SiloFile     `json:"attachments,omitempty"`
 }
 
 // Fault represents an error that occurred during the processing of a job.
