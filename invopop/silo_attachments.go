@@ -111,7 +111,7 @@ type CreateSiloAttachment struct {
 	Desc string `json:"desc,omitempty" title:"Description"`
 	// Key used to identify the attachment idempotently within a silo entry
 	Key string `json:"key,omitempty" title:"Key"`
-	// Category of the attachment
+	// Category of the attachment.
 	Category string `json:"category,omitempty" title:"Category"`
 	// Raw file data
 	Data []byte `json:"data" title:"Data"`
