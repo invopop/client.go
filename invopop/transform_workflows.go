@@ -73,6 +73,7 @@ type CreateWorkflow struct {
 	Schema      string  `json:"schema,omitempty" form:"schema" title:"Schema" description:"Short schema name that the workflow will be allowed to process." example:"bill/invoice"`
 	Country     string  `json:"country,omitempty" form:"country" title:"Country Code" description:"ISO country code the workflow will be used in." example:"ES"`
 	Steps       []*Step `json:"steps" form:"steps" title:"Steps" description:"Array of Steps to use for this workflow."`
+	Rescue      []*Step `json:"rescue,omitempty" title:"Rescue" description:"List of steps to execute when a KO status is returned by a previous step and not explicitly managed."`
 }
 
 // UpdateWorkflow defines what we can update in a workflow.
@@ -81,6 +82,7 @@ type UpdateWorkflow struct {
 	Name        string  `json:"name" form:"name" title:"Name" description:"New name for the workflow."`
 	Description string  `json:"description,omitempty" form:"description" title:"Description" description:"Updated description."`
 	Steps       []*Step `json:"steps" form:"steps" title:"Steps" description:"Array of Steps to use for this workflow."`
+	Rescue      []*Step `json:"rescue,omitempty" title:"Rescue" description:"List of steps to execute when a KO status is returned by a previous step and not explicitly managed."`
 }
 
 // FindWorkflows is used to get a list of workflows according to the conditions provided.
