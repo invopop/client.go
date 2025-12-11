@@ -71,6 +71,12 @@ func IsForbidden(err error) bool {
 	return asError(err, http.StatusForbidden) != nil
 }
 
+// IsInvalid is a helper that will return true if the response error is
+// an invalid request.
+func IsInvalid(err error) bool {
+	return asError(err, http.StatusUnprocessableEntity) != nil
+}
+
 // AsResponseError will extract the ResponseError from the provided error
 // or return nil if no match found.
 func AsResponseError(err error) *ResponseError {
