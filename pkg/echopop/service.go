@@ -129,8 +129,13 @@ func logRequest() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			tn := time.Now()
 			req := c.Request()
-			err := next(c)
 			res := c.Response()
+			err := next(c)
+			if err != nil {
+				// Required to log the actual response in case of generic
+				// errors. Borrowed from echo's middleware.Logger.
+				c.Error(err)
+			}
 
 			log.Debug().
 				Str("method", req.Method).
