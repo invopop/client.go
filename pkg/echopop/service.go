@@ -31,8 +31,8 @@ func NewService() *Service {
 		echo: echo.New(),
 	}
 
+	s.echo.Use(logRequest())
 	s.echo.Use(middleware.Recover())
-	s.echo.Use(logRequest()) // runs last so it logs the actual response after recovery
 
 	return s
 }
