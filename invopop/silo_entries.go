@@ -48,9 +48,9 @@ type SiloEntry struct {
 
 	SnippetData json.RawMessage `json:"snippet,omitempty"`
 
-	Attachments []*SiloAttachment `json:"attachments,omitempty"`
-	Data        json.RawMessage   `json:"data,omitempty"` // may not always be available
-	Meta        []*SiloMeta       `json:"meta,omitempty" title:"Meta" description:"Additional meta fields associated with the entry."`
+	Files []*SiloFile     `json:"attachments,omitempty"`
+	Data  json.RawMessage `json:"data,omitempty"` // may not always be available
+	Meta  []*SiloMeta     `json:"meta,omitempty" title:"Meta" description:"Additional meta fields associated with the entry."`
 }
 
 // SiloEntryCollection contains a list of Entries that start from the provided created_at
