@@ -55,7 +55,10 @@ func AuthEnrollment(ic *invopop.Client) echo.MiddlewareFunc {
 
 			e, err := ic.Access().Enrollment().Authorize(ctx)
 			if err != nil {
-				return err
+				if invopop.IsNotFound(err) {
+					return echo.NewHTTPError(http.StatusUnauthorized, "enrollment not found").WithInternal(err)
+				}
+				return echo.NewHTTPError(http.StatusInternalServerError).WithInternal(err)
 			}
 			c.Set(enrollmentKey, e)
 			c.Set(invopopClientKey, ic.SetAuthToken(e.Token))
