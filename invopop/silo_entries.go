@@ -75,15 +75,16 @@ type CreateSiloEntry struct {
 	PreviousID   string          `json:"previous_id,omitempty" title:"Previous ID" description:"The UUIDv1 of the previous silo entry to copy." example:"347c5b04-cde2-11ed-afa1-0242ac120002"`
 	ContentType  string          `json:"content_type,omitempty" title:"Content Type" description:"The content type of the data being uploaded." example:"application/json"`
 	Correct      json.RawMessage `json:"correct,omitempty" title:"Correct" description:"JSON object containing the GOBL correction option data." example:"{\"credit\": true}"`
-	AllowInvalid bool            `json:"allow_invalid,omitempty" title:"Allow Invalid" description:"When true, the envelope's contents are allowed to be invalid. Only applied for enrolled applications." example:"true"`
+	AllowInvalid bool            `json:"allow_invalid,omitempty" title:"Allow Invalid" description:"When true, the envelope's contents are allowed to be invalid." example:"true"`
 }
 
 // UpdateSiloEntry allows for a silo document to be updated under certain conditions.
 type UpdateSiloEntry struct {
-	ID          string          `json:"-"`
-	Folder      string          `json:"folder,omitempty" title:"Folder" description:"New location for the silo entry." example:"drafts"`
-	ContentType string          `json:"content_type,omitempty" title:"Content Type" description:"The content type of the data being uploaded which by default expects application/json for a complete document, merge patch application/merge-patch+json (RFC7396), or a simple patch application/json-patch+json (RFC6902)" example:"application/json"`
-	Data        json.RawMessage `json:"data" title:"Data" description:"Updated envelope data either a complete envelope or document, or patched data according to the content type."`
+	ID           string          `json:"-"`
+	Folder       string          `json:"folder,omitempty" title:"Folder" description:"New location for the silo entry." example:"drafts"`
+	ContentType  string          `json:"content_type,omitempty" title:"Content Type" description:"The content type of the data being uploaded which by default expects application/json for a complete document, merge patch application/merge-patch+json (RFC7396), or a simple patch application/json-patch+json (RFC6902)" example:"application/json"`
+	Data         json.RawMessage `json:"data" title:"Data" description:"Updated envelope data either a complete envelope or document, or patched data according to the content type."`
+	AllowInvalid bool            `json:"allow_invalid,omitempty" title:"Allow Invalid" description:"When true, the updated envelope's contents are allowed to be invalid." example:"true"`
 }
 
 // FindSiloEntries is used to list entries ordered by date.
