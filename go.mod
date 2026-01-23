@@ -1,4 +1,4 @@
-module github.com/fiskaly/vendor.invopop-client.go
+module github.com/invopop/client.go
 
 go 1.23.0
 
