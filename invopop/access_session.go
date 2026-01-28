@@ -74,6 +74,9 @@ func (s *Session) Authorize(ctx context.Context) error {
 	if !s.ShouldRenew() {
 		return nil
 	}
+	if s.client == nil {
+		return fmt.Errorf("%w: no client available in session", ErrAccessDenied)
+	}
 	en, err := s.client.Access().Enrollment().Authorize(ctx)
 	if err != nil {
 		if IsNotFound(err) {
@@ -100,7 +103,9 @@ func (s *Session) SetFromEnrollment(e *Enrollment) {
 	s.Data = e.Data
 	s.Token = e.Token
 	s.TokenExpires = e.TokenExpires
-	s.client = s.client.SetAuthToken(e.Token)
+	if s.client != nil && e.Token != "" {
+		s.client = s.client.SetAuthToken(e.Token)
+	}
 }
 
 // Set will store a key-value pair inside the session much like in a context object
@@ -130,7 +135,9 @@ func (s *Session) Get(key any) any {
 func (s *Session) SetToken(tok string) {
 	s.Token = tok
 	s.TokenExpires = 0
-	s.client = s.client.WithAuthToken(tok)
+	if s.client != nil {
+		s.client = s.client.WithAuthToken(tok)
+	}
 }
 
 // Authorized indicates whether the session has a valid token that is not expired.

@@ -3,6 +3,7 @@ package echopop
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -21,7 +22,7 @@ const (
 // on the presence of the `Authorization` header, `state` query parameter,
 // or a cookie, and will not enforce that a session is authorized.
 //
-// Depending on your use-case, you may to follow this middleware up with an
+// Depending on your use-case, you may want to follow this middleware up with an
 // Authorize call on the session to ensure that it is valid and populate it with
 // data from the enrollment.
 //
@@ -62,7 +63,11 @@ func extractSessionFromCookie(c echo.Context, sess *invopop.Session) error {
 	// If there is something we can parse, try to use it. This implies
 	// that a previous session was authenticated and stored.
 	if val, ok := ck.Values[sessionCtxKey]; ok {
-		err = json.Unmarshal([]byte(val.(string)), sess)
+		str, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("unexpected session cookie format")
+		}
+		err = json.Unmarshal([]byte(str), sess)
 		if err != nil {
 			return fmt.Errorf("unmarshaling session: %w", err)
 		}
@@ -82,11 +87,12 @@ func GetSession(c echo.Context) *invopop.Session {
 }
 
 // StoreSessionCookie will store the session object into a secure cookie in the response headers.
-// Only use cookies when the Authorization cannot be used.
+// Cookies can only be used for browser-based page requests as Cookie's HttpOnly flag prevents
+// AJAX requests from accessing them. Use the `Authorization` or `X-Session` header for API/AJAX
+// requests which may include the session also.
 func StoreSessionCookie(c echo.Context, sess *invopop.Session) error {
 	cs, err := session.Get(sessionCookieName, c)
 	if err != nil {
-		// ignore session errors
 		return fmt.Errorf("preparing session: %w", err)
 	}
 
@@ -100,7 +106,13 @@ func StoreSessionCookie(c echo.Context, sess *invopop.Session) error {
 		cs.Options = &sessions.Options{
 			Path:     "/",
 			MaxAge:   int(sess.TokenExpires - tn),
-			HttpOnly: false,
+			HttpOnly: true,                    // cookies cannot be used for AJAX
+			SameSite: http.SameSiteStrictMode, // prevent CSRF
+			Secure:   true,
+		}
+		if cs.Options.MaxAge < 0 {
+			// Don't allow negative max-age
+			cs.Options.MaxAge = 0
 		}
 		b, err := json.Marshal(sess)
 		if err != nil {

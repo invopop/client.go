@@ -21,7 +21,7 @@ func (s *AccessService) NewSession() *Session {
 // be used before making a call to Authorize to validate that the token is valid.
 func (s *AccessService) NewSessionWithToken(token string) *Session {
 	sess := s.NewSession()
-	sess.Token = token
+	sess.SetToken(token)
 	return sess
 }
 
