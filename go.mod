@@ -8,8 +8,10 @@ require (
 	github.com/a-h/templ v0.3.833
 	github.com/foolin/goview v0.3.0
 	github.com/gabriel-vasile/mimetype v1.4.4
+	github.com/gorilla/sessions v1.4.0
 	github.com/invopop/configure v0.8.0
 	github.com/invopop/gobl v0.113.0
+	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/magefile/mage v1.15.0
 	github.com/nats-io/nats.go v1.43.0
@@ -29,6 +31,8 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/context v1.1.2 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/invopop/validation v0.7.0 // indirect
 	github.com/invopop/yaml v0.3.1 // indirect

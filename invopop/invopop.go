@@ -20,11 +20,11 @@ type Client struct {
 	svc *service
 }
 
-type invopopClientKey string
+type invopopContextKey string
 
 const (
-	productionHost                  = "https://api.invopop.com"
-	clientKey      invopopClientKey = "invopop-client"
+	productionHost                   = "https://api.invopop.com"
+	clientKey      invopopContextKey = "client"
 )
 
 // HTTPClient returns the underlying HTTP client (useful for mocking).
@@ -115,16 +115,21 @@ func WithOAuthClient(id, secret string) ClientOption {
 	}
 }
 
-// SetAuthToken will set the authentication token inside a
-// new client instance. This is useful for dealing with multiple
-// connections that don't necessarily share the same token, such
-// as when building apps that use enrollments to authenticate
-// sessions.
-func (c *Client) SetAuthToken(token string) *Client {
+// WithAuthToken will clone the current client with a new authentication token.
+// Use this method with applications that have a default client with static
+// OAuth credentials, and need to upgrade the connection for a specific enrollment.
+func (c *Client) WithAuthToken(token string) *Client {
 	c2 := *c
 	c2.conn = c2.conn.Clone(context.Background()).SetAuthToken(token)
 	c2.svc = &service{client: &c2}
 	return &c2
+}
+
+// SetAuthToken will set the authentication token inside a new client
+// instance.
+// Deprecated: use WithAuthToken instead.
+func (c *Client) SetAuthToken(token string) *Client {
+	return c.WithAuthToken(token)
 }
 
 // Context adds the current client model to the context so that it can be
