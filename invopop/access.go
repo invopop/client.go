@@ -25,6 +25,15 @@ func (s *AccessService) NewSessionWithToken(token string) *Session {
 	return sess
 }
 
+// NewSessionWithOwnerID will instantiate a new session object with the provided
+// owner ID. This is a convenience method around NewSession and is intended to be
+// used before making a call to Authorize to validate that the owner ID is valid.
+func (s *AccessService) NewSessionWithOwnerID(ownerID string) *Session {
+	sess := s.NewSession()
+	sess.SetOwnerID(ownerID)
+	return sess
+}
+
 // Enrollment returns the service for Access Enrollments
 func (s *AccessService) Enrollment() *EnrollmentService {
 	return (*EnrollmentService)(s)

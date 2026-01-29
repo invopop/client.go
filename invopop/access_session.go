@@ -20,8 +20,13 @@ const (
 // Sessions should be used within your business or domain logic and can be used as a
 // replacement of a regular Client instance.
 //
-// Instantiate sessions using the Access NewSession method, even if you intend to
+// Instantiate sessions using the Access NewSession or related methods, even if you intend to
 // unmarshal them from a stored source to ensure that there is always a client available.
+//
+// Sessions must be authorized before use by calling the Authorize method, which will
+// ensure that the token is valid and renewed if necessary. If no token is available in
+// the session, but an Enrollment ID or Owner ID is provided, those will be used to
+// authorize the session instead.
 //
 // Important: sessions should only be stored in cookies if the application using them
 // will be used independently. For embedded applications, such as those running inside
@@ -69,6 +74,9 @@ type Session struct {
 // provided token is still valid based on the expiration timestamp. To force
 // renewal, set the TokenExpires field to zero.
 //
+// If an Enrollment or Owner ID is provided inside the session and no token is
+// present, those will be used to try to authorize the session instead.
+//
 // If no client is available, or no token is present, an error will be returned.
 func (s *Session) Authorize(ctx context.Context) error {
 	if !s.ShouldRenew() {
@@ -77,7 +85,15 @@ func (s *Session) Authorize(ctx context.Context) error {
 	if s.client == nil {
 		return fmt.Errorf("%w: no client available in session", ErrAccessDenied)
 	}
-	en, err := s.client.Access().Enrollment().Authorize(ctx)
+	var en *Enrollment
+	var err error
+	if s.Token != "" {
+		en, err = s.client.Access().Enrollment().Authorize(ctx)
+	} else if s.EnrollmentID != "" {
+		en, err = s.client.Access().Enrollment().AuthorizeWithID(ctx, s.EnrollmentID)
+	} else if s.OwnerID != "" {
+		en, err = s.client.Access().Enrollment().AuthorizeWithOwnerID(ctx, s.OwnerID)
+	}
 	if err != nil {
 		if IsNotFound(err) {
 			return fmt.Errorf("%w: application not enrolled", ErrAccessDenied)
@@ -138,6 +154,12 @@ func (s *Session) SetToken(tok string) {
 	if s.client != nil {
 		s.client = s.client.WithAuthToken(tok)
 	}
+}
+
+// SetOwnerID will update the session's owner ID value in preparation for an authorization
+// request to be sent to the Invopop API.
+func (s *Session) SetOwnerID(oid string) {
+	s.OwnerID = oid
 }
 
 // Authorized indicates whether the session has a valid token that is not expired.
