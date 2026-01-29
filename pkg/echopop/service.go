@@ -9,10 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/foolin/goview"
 	echoview "github.com/foolin/goview/supports/echoview-v4"
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
+	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
@@ -21,18 +25,50 @@ import (
 // Service provides a wrapper around Echo that makes it a bit easier
 // to start up a new service that will provide an HTTP server.
 type Service struct {
-	echo *echo.Echo
+	echo       *echo.Echo
+	sessionKey string
+}
+
+// Option defines a configuration option for the Service.
+type Option func(s *Service)
+
+// WithCookieSessionKey sets the session key to be used by the service. This must be
+// a sufficiently long random string to ensure the security of the session cookies,
+// with a minimum length of 32 bytes recommended. See the GenerateCookieSecret function
+// for a way to generate a suitable random string.
+func WithCookieSessionKey(key string) Option {
+	return func(s *Service) {
+		s.sessionKey = key
+	}
 }
 
 // NewService instantiates a new echo service using some reasonable
-// defaults.
-func NewService() *Service {
+// defaults. Typical usage example:
+//
+//	svc := echopop.NewService(
+//	    echopop.WithCookieSessionKey("your-randomly-long-secret"),
+//	)
+//	svc.Serve(func(e *echo.Echo) {
+//	  e.StaticFS("/", assets.Content)
+//	  g := e.Group("/api", svc.LoadSession())
+//	  g.GET("/test", testHandler)
+//	})
+func NewService(opts ...Option) *Service {
 	s := &Service{
 		echo: echo.New(),
+	}
+	for _, opt := range opts {
+		opt(s)
 	}
 
 	s.echo.Use(logRequest())
 	s.echo.Use(middleware.Recover())
+
+	if s.sessionKey != "" {
+		s.echo.Use(
+			session.Middleware(sessions.NewCookieStore([]byte(s.sessionKey))),
+		)
+	}
 
 	return s
 }
@@ -56,6 +92,23 @@ func (s *Service) Root(fn func(*echo.Group)) {
 // filesystem object to use.
 func (s *Service) StaticRootFS(fs fs.FS, root string) {
 	s.echo.StaticFS("/", echo.MustSubFS(fs, root))
+}
+
+// AuthToken is a convenience method to extract the authentication token from
+// the request context. It will look for a Bearer token in the Authorization
+// header, or a "state" query parameter which is often used in OAuth 2.0 flows.
+// If no token is found, an empty string is returned.
+func AuthToken(c echo.Context) string {
+	tok := ""
+	auth := c.Request().Header.Get("Authorization")
+	if len(auth) > 7 && strings.EqualFold(auth[:7], "bearer ") {
+		tok = auth[7:]
+	}
+	if tok == "" {
+		// try to use OAuth 2.0 state query param
+		tok = c.QueryParam(enrollmentStateKey)
+	}
+	return tok
 }
 
 // Render will prepare the echo templating feature using "goview"
@@ -122,6 +175,13 @@ func (s *Service) Start(port string) error {
 // includes a timeout.
 func (s *Service) Stop(ctx context.Context) error {
 	return s.echo.Shutdown(ctx)
+}
+
+// GenerateCookieSecret will generate a sufficiently random secret
+// suitable for use with sessions.
+func GenerateCookieSecret() string {
+	key := securecookie.GenerateRandomKey(32)
+	return fmt.Sprintf("%x", key)
 }
 
 func logRequest() echo.MiddlewareFunc {

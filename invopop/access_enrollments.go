@@ -32,7 +32,8 @@ type Enrollment struct {
 
 	Disabled bool `json:"disabled" title:"Disabled" description:"Whether the enrollment is disabled." example:"false"`
 
-	Token string `json:"token" title:"Token" description:"A token that may be used to authenticate the enrollment with API operations."`
+	Token        string `json:"token" title:"Token" description:"A token that may be used to authenticate the enrollment with API operations."`
+	TokenExpires int64  `json:"token_expires" title:"Token Expires" description:"The expiration unix timestamp of the token." example:"1680000000"`
 }
 
 // authorizeEnrollment is used internally to describe the fields required to confirm
