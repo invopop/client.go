@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"path"
+	"strconv"
 )
 
 const (
@@ -14,6 +16,22 @@ const (
 // SiloMetaService provides access to meta endpoints. Access to these requires
 // the special "enrolled" scope in tokens.
 type SiloMetaService service
+
+// SiloMetaCollection contains a list of Meta entries with pagination.
+type SiloMetaCollection struct {
+	List   []*SiloMeta `json:"list"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+}
+
+// FindMetaBySrc is used to query meta entries by source and key.
+type FindMetaBySrc struct {
+	Key           string `query:"key" title:"Key" description:"Key used to identify the meta entries." example:"service-id"`
+	IncludeSecure bool   `query:"include_secure" title:"Include Secure" description:"When true, secure meta entries are included in results." example:"false"`
+	Shared        bool   `query:"shared" title:"Shared" description:"When true, only shared meta entries are returned." example:"false"`
+	Limit         int32  `query:"limit" title:"Limit" description:"Maximum number of entries to return." example:"100"`
+	Offset        int32  `query:"offset" title:"Offset" description:"Number of entries to skip." example:"0"`
+}
 
 // SiloMeta describes a meta row embedded inside a Silo Entry.
 type SiloMeta struct {
@@ -47,6 +65,33 @@ type UpsertSiloMeta struct {
 	Owned     bool            `json:"owned,omitempty" title:"Owned" description:"When true, the meta entry is indexed by owner ID." example:"true"`
 	Secure    bool            `json:"secure,omitempty" title:"Secure" description:"When true, the meta entry is never included in lists and needs to be specifically requested." example:"true"`
 	Shared    bool            `json:"shared,omitempty" title:"Shared" description:"When true, the meta entry can be shared with other applications." example:"true"`
+}
+
+// Find retrieves meta entries by source and key with pagination support.
+// The source is determined by the authentication token's app ID.
+func (s *SiloMetaService) Find(ctx context.Context, req *FindMetaBySrc) (*SiloMetaCollection, error) {
+	if req.Key == "" {
+		return nil, errors.New("missing key")
+	}
+	p := path.Join(siloBasePath, entriesPath, metaPath, req.Key)
+	query := make(url.Values)
+	if req.IncludeSecure {
+		query.Add("include_secure", "true")
+	}
+	if req.Shared {
+		query.Add("shared", "true")
+	}
+	if req.Limit != 0 {
+		query.Add("limit", strconv.Itoa(int(req.Limit)))
+	}
+	if req.Offset != 0 {
+		query.Add("offset", strconv.Itoa(int(req.Offset)))
+	}
+	if len(query) > 0 {
+		p = p + "?" + query.Encode()
+	}
+	col := new(SiloMetaCollection)
+	return col, s.client.get(ctx, p, col)
 }
 
 // Fetch retrieves a meta row by its key.
