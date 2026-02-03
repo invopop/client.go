@@ -19,9 +19,10 @@ type SiloMetaService service
 
 // SiloMetaCollection contains a list of Meta entries with pagination.
 type SiloMetaCollection struct {
-	List   []*SiloMeta `json:"list"`
-	Limit  int32       `json:"limit"`
-	Offset int32       `json:"offset"`
+	List       []*SiloMeta `json:"list"`
+	Limit      int32       `json:"limit"`
+	Cursor     string      `json:"cursor,omitempty"`
+	NextCursor string      `json:"next_cursor,omitempty"`
 }
 
 // FindMetaBySrc is used to query meta entries by source and key.
@@ -30,7 +31,7 @@ type FindMetaBySrc struct {
 	IncludeSecure bool   `query:"include_secure" title:"Include Secure" description:"When true, secure meta entries are included in results." example:"false"`
 	Shared        bool   `query:"shared" title:"Shared" description:"When true, only shared meta entries are returned." example:"false"`
 	Limit         int32  `query:"limit" title:"Limit" description:"Maximum number of entries to return." example:"100"`
-	Offset        int32  `query:"offset" title:"Offset" description:"Number of entries to skip." example:"0"`
+	Cursor        string `query:"cursor" title:"Cursor" description:"Position provided by the previous result's next_cursor property."`
 }
 
 // SiloMeta describes a meta row embedded inside a Silo Entry.
@@ -84,8 +85,8 @@ func (s *SiloMetaService) Find(ctx context.Context, req *FindMetaBySrc) (*SiloMe
 	if req.Limit != 0 {
 		query.Add("limit", strconv.Itoa(int(req.Limit)))
 	}
-	if req.Offset != 0 {
-		query.Add("offset", strconv.Itoa(int(req.Offset)))
+	if req.Cursor != "" {
+		query.Add("cursor", req.Cursor)
 	}
 	if len(query) > 0 {
 		p = p + "?" + query.Encode()
