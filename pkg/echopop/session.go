@@ -88,7 +88,7 @@ func GetSession(c echo.Context) *invopop.Session {
 
 // StoreSessionCookie will store the session object into a secure cookie in the response headers.
 // Cookies can only be used for browser-based page requests as Cookie's HttpOnly flag prevents
-// AJAX requests from accessing them. Use the `Authorization` or `X-Session` header for API/AJAX
+// AJAX requests from accessing them. Use the `Authorization` header for API/AJAX
 // requests which may include the session also.
 func StoreSessionCookie(c echo.Context, sess *invopop.Session) error {
 	cs, err := session.Get(sessionCookieName, c)
