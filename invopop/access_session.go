@@ -93,6 +93,8 @@ func (s *Session) Authorize(ctx context.Context) error {
 		en, err = s.client.Access().Enrollment().AuthorizeWithID(ctx, s.EnrollmentID)
 	} else if s.OwnerID != "" {
 		en, err = s.client.Access().Enrollment().AuthorizeWithOwnerID(ctx, s.OwnerID)
+	} else {
+		return fmt.Errorf("%w: no token or enrollment/owner ID provided", ErrAccessDenied)
 	}
 	if err != nil {
 		if IsNotFound(err) {
