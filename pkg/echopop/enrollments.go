@@ -96,8 +96,8 @@ func GetEnrollment(c echo.Context) *invopop.Enrollment {
 // GetClient provides the Invopop client that was prepared with
 // the enrollment's auth token.
 func GetClient(c echo.Context) *invopop.Client {
-	if c, ok := c.Get(invopopClientKey).(*invopop.Client); ok {
-		return c
+	if client, ok := c.Get(invopopClientKey).(*invopop.Client); ok {
+		return client
 	}
 	return nil
 }
