@@ -50,7 +50,7 @@ func WithCookieSessionKey(key string) Option {
 //	)
 //	svc.Serve(func(e *echo.Echo) {
 //	  e.StaticFS("/", assets.Content)
-//	  g := e.Group("/api", svc.LoadSession())
+//	  g := e.Group("/api", echopop.LoadSession(ic))
 //	  g.GET("/test", testHandler)
 //	})
 func NewService(opts ...Option) *Service {
