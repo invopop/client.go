@@ -8,6 +8,12 @@ import (
 	"resty.dev/v3"
 )
 
+// Common errors directly exposed by the invopop package and not considered
+// response errors.
+var (
+	ErrAccessDenied = errors.New("access denied")
+)
+
 // ResponseError is a wrapper around error responses from the server that will handle
 // error messages.
 type ResponseError struct {
