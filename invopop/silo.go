@@ -31,3 +31,8 @@ func (svc *SiloService) GOBL() *SiloGOBLService {
 func (svc *SiloService) Spool() *SiloSpoolService {
 	return (*SiloSpoolService)(svc)
 }
+
+// States provides a wrapper around silo entry state methods.
+func (svc *SiloService) States() *SiloStatesService {
+	return (*SiloStatesService)(svc)
+}
