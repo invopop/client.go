@@ -3,6 +3,7 @@ package invopop
 import (
 	"context"
 	"fmt"
+	"io"
 )
 
 type AtPtService struct {
@@ -162,4 +163,36 @@ func (s *AtPtService) ListSeries(ctx context.Context, siloEntryID string) (*List
 	}
 
 	return resp, nil
+}
+
+// GetSaftReport retrieves the SAFT report for a specific supplier in Portugal.
+//
+// Endpoint: GET /apps/at-pt/v1/entry/{silo_entry_id}/saft?year={year}&month={month}
+// Parameters:
+// - silo_entry_id: The ID of the silo entry (supplier) for which to retrieve the SAFT report.
+// - year: The year for which to retrieve the SAFT report (e.g., 2024).
+// - month: The month for which to retrieve the SAFT report (0-12), if 0, the entire year is retrieved.
+// Note: The response is expected to be a byte array (the SAFT report file).
+func (s *AtPtService) GetSaftReport(ctx context.Context, siloEntryID string, year int, month int) ([]byte, error) {
+	if siloEntryID == "" {
+		return nil, fmt.Errorf("siloEntryID is required")
+	}
+
+	// 2. Build the URL path as per documentation
+	path := fmt.Sprintf("/apps/at-pt/v1/entry/%s/saft?year=%d&month=%d", siloEntryID, year, month)
+
+	// 3. Execute the request
+	resp, err := s.client.getRaw(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get SAFT report: %w", err)
+	}
+	defer resp.Close()
+
+	// Read and print response
+	body, err := io.ReadAll(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read SAFT report data: %w", err)
+	}
+
+	return body, nil
 }

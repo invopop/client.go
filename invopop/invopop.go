@@ -3,6 +3,7 @@ package invopop
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"resty.dev/v3"
@@ -75,6 +76,8 @@ func New(opts ...ClientOption) *Client {
 	for _, opt := range opts {
 		opt(c)
 	}
+
+	c.conn.SetResponseMiddlewares()
 
 	// Reuse a single struct instead of allocating one for each service on the heap.
 	c.svc = new(service)
@@ -156,6 +159,19 @@ func (c *Client) get(ctx context.Context, path string, body interface{}) error {
 		return err
 	}
 	return re.handle(res)
+}
+
+func (c *Client) getRaw(ctx context.Context, path string) (io.ReadCloser, error) {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetError(re).
+		Get(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Body, nil
 }
 
 func (c *Client) post(ctx context.Context, path string, in, out any) error {
