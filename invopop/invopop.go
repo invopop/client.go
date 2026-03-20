@@ -77,8 +77,6 @@ func New(opts ...ClientOption) *Client {
 		opt(c)
 	}
 
-	c.conn.SetResponseMiddlewares()
-
 	// Reuse a single struct instead of allocating one for each service on the heap.
 	c.svc = new(service)
 	c.svc.client = c
