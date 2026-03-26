@@ -1,118 +1,120 @@
 syntax = "proto3";
 
 package invopop.provider.v1;
+
+import "errors.proto";
+import "files.proto";
+
 option go_package = "./;gateway";
 
-import "files.proto";
-import "errors.proto";
-
 enum TaskStatus {
-	NA = 0; // invalid
-	OK = 1; // OKAY
-	ERR = 2; // Something went wrong.
-	QUEUED = 3; // Try again later
-	POKE = 6; // Needs a poke to wake up
-	CANCEL = 7; // Cancel requested
-	KO = 4; // Impossible to complete
-	SKIP = 5; // Not processed, see message
+  NA = 0; // invalid
+  OK = 1; // OKAY
+  ERR = 2; // Something went wrong.
+  QUEUED = 3; // Try again later
+  POKE = 6; // Needs a poke to wake up
+  CANCEL = 7; // Cancel requested
+  KO = 4; // Impossible to complete
+  SKIP = 5; // Not processed, see message
 }
 
 // Task keeps together the request and base data to be used by a processor
 // to provide a result.
 message Task {
-	// Basic details
-	string id = 1;
-	int64 created_ts = 19; // unix time when the intent was originally created
-	string job_id = 2;
-	string job_key = 17;
-	string silo_entry_id = 3; // was previously envelope_id
-	string owner_id = 9; // May be used for authentication
-	map <string, string> args = 18;
-	string ref = 10; // If provided in a previous request, will be here too
-	string action = 12; // Action to be performed by the provider.
-	bool sandbox = 16; // If true, execute in sandbox environment.
+  // Basic details
+  string id = 1;
+  int64 created_ts = 19; // unix time when the intent was originally created
+  string job_id = 2;
+  string job_key = 17;
+  string silo_entry_id = 3; // was previously envelope_id
+  string owner_id = 9; // May be used for authentication
+  map<string, string> args = 18;
+  string ref = 10; // If provided in a previous request, will be here too
+  string action = 12; // Action to be performed by the provider.
+  bool sandbox = 16; // If true, execute in sandbox environment.
 
-	// Token proves that the request came from the gateway and can be used
-	// by the provider to make additional requests to the gateway on behalf
-	// of the end-user.
-	string token = 11;
+  // Token proves that the request came from the gateway and can be used
+  // by the provider to make additional requests to the gateway on behalf
+  // of the end-user.
+  string token = 11;
 
-	// Quick access to data
-	string state = 13; // state of the silo entry
-	bytes envelope = 4;
-	bytes config = 5;
-	string envelope_public_url = 7;
+  // Quick access to data
+  string state = 13; // state of the silo entry
+  bytes envelope = 4;
+  bytes config = 5;
+  string envelope_public_url = 7;
 
-	// Array of faults copied from the job which may be useful for reporting.
-	repeated Fault faults = 14;
+  // Array of faults copied from the job which may be useful for reporting.
+  repeated Fault faults = 14;
 
-	// Rerefence to any existing attachments
-	repeated File files = 6;
+  // Rerefence to any existing attachments
+  repeated File files = 6;
 
-	// Shared meta rows, if any, associated with the silo entry.
-	repeated Meta meta = 15;
+  // Shared meta rows, if any, associated with the silo entry.
+  repeated Meta meta = 15;
 
-	// Tracking timestamp, issued by the gateway service. Includes nano seconds.
-	double ts = 8;
+  // Tracking timestamp, issued by the gateway service. Includes nano seconds.
+  double ts = 8;
 }
 
 // A Fault provides basic information about a previous step that KO'd.
 message Fault {
-	string provider = 1;
-	string code = 2;
-	string message = 3;
-	bytes fields = 4; // JSON encoded list of validation errors
+  string provider = 1;
+  string code = 2;
+  repeated string paths = 5;
+  string message = 3;
+  bytes fields = 4; // Deprecated: JSON encoded list of validation errors
 }
 
 // Meta represents a simplified Silo Meta row.
 message Meta {
-	string src = 1;
-	string key = 2;
-	string ref = 4;
-	string link_url = 5;
-	bytes value = 3;
+  string src = 1;
+  string key = 2;
+  string ref = 4;
+  string link_url = 5;
+  bytes value = 3;
 }
 
 // TaskResult says what we expect from a provider after attempting to complete
 // a task.
 message TaskResult {
-	TaskStatus status = 1;
-	// optional provider response code
-	string code = 2;
-	// Additional arguments that the task would like to supply to -next- steps
-	map<string, string> args = 14;
-	// human response message
-	string message = 3;
-	// fields contains a JSON encoded set of nested field validation errors defined
-	// by the `gobl.FieldErrors` type.
-	bytes fields = 15;
-	// reference that can be used to identify the job later such
-	// as in a poke request.
-	string ref = 11;
-	// sign when true, will ensure the envelope is signed
-	bool sign = 12;
-	// envelope data either complete or patched according to content_type
-	bytes data = 9;
-	// Content type of data to send to the silo
-	string content_type = 10;
-	// For QUEUED or ERR response, how long to wait to try again (optional).
-	int32 retry_in = 6;
-	// Optional Silo Entry ID to be used when a new silo entry was created
-	// by this task, and it should be used for all subsequent actions in
-	// the workflow. If data is also included, the silo entry will be created.
-	optional string silo_entry_id = 13;
+  TaskStatus status = 1;
+  // optional provider response code
+  string code = 2;
+  // Additional arguments that the task would like to supply to -next- steps
+  map<string, string> args = 14;
+  // human response message
+  string message = 3;
+  // fields contains a JSON encoded set of nested field validation errors defined
+  // by the `gobl.FieldErrors` type.
+  bytes fields = 15;
+  // reference that can be used to identify the job later such
+  // as in a poke request.
+  string ref = 11;
+  // sign when true, will ensure the envelope is signed
+  bool sign = 12;
+  // envelope data either complete or patched according to content_type
+  bytes data = 9;
+  // Content type of data to send to the silo
+  string content_type = 10;
+  // For QUEUED or ERR response, how long to wait to try again (optional).
+  int32 retry_in = 6;
+  // Optional Silo Entry ID to be used when a new silo entry was created
+  // by this task, and it should be used for all subsequent actions in
+  // the workflow. If data is also included, the silo entry will be created.
+  optional string silo_entry_id = 13;
 }
 
 // TaskPoke is used to wake up a task that is currently QUEUED.
 message TaskPoke {
-	string id = 1; // Task (Intent) ID
-	string job_id = 2;
-	string ref = 3; // If id and job_id are not available
-	string code = 4;
-	string message = 5;
+  string id = 1; // Task (Intent) ID
+  string job_id = 2;
+  string ref = 3; // If id and job_id are not available
+  string code = 4;
+  string message = 5;
 }
 
 // TaskPokeResponse is the response to a TaskPoke request.
 message TaskPokeResponse {
-	Error err = 1;
+  Error err = 1;
 }
