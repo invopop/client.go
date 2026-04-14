@@ -11,7 +11,7 @@ import (
 
 const (
 	name     = "provider"
-	runImage = "gcr.io/invopop/golang:1.22.3-alpine"
+	runImage = "us-docker.pkg.dev/invopop/repos/golang:1.24.3-alpine"
 )
 
 // Protocol takes the protobuf source and converts them into go code.

@@ -41,10 +41,11 @@ type Job struct {
 
 // Fault represents an error that occurred during the processing of a job.
 type Fault struct {
-	Provider string `json:"provider" title:"Provider" description:"ID of the provider that generated the fault." example:"pdf"`
-	Code     string `json:"code,omitempty" title:"Code" description:"Code assigned by the provider that may provide additional information about the fault."`
-	Message  string `json:"message" title:"Message" description:"Message assigned by the provider that may provide additional information about the fault."`
-	Fields   string `json:"fields,omitempty" title:"Fields" description:"Nested validation field errors"`
+	Provider string   `json:"provider" title:"Provider" description:"ID of the provider that generated the fault." example:"pdf"`
+	Code     string   `json:"code,omitempty" title:"Code" description:"Code assigned by the provider that may provide additional information about the fault."`
+	Message  string   `json:"message,omitempty" title:"Message" description:"Message assigned by the provider that may provide additional information about the fault."`
+	Paths    []string `json:"paths,omitempty" title:"Paths" description:"JSON Paths to the locations in the GOBL envelope where the fault occurred"`
+	Fields   string   `json:"fields,omitempty" title:"Fields" description:"Nested validation field errors"` // Deprecated
 }
 
 // Status returns true if the job has completed, and if there were any problems
