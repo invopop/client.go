@@ -9,13 +9,13 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.4.0
 	github.com/invopop/configure v0.8.0
-	github.com/invopop/gobl v0.400.0-rc2
+	github.com/invopop/gobl v0.401.0
 	github.com/labstack/echo-contrib v0.17.4
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/echo/v4 v4.15.0
 	github.com/magefile/mage v1.15.0
 	github.com/nats-io/nats.go v1.43.0
 	github.com/rs/zerolog v1.34.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	gitlab.com/flimzy/testy v0.14.0
 	golang.org/x/sync v0.19.0
 	google.golang.org/protobuf v1.36.6
@@ -52,7 +52,7 @@ require (
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
-	golang.org/x/time v0.11.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"resty.dev/v3"
 )
@@ -19,14 +20,18 @@ var (
 type ResponseError struct {
 	response *resty.Response
 
-	// Code is the error code which may have been provided by the server.
-	Code string `json:"code"`
+	// Key is the short error key provided by the server (e.g. "validation").
+	Key string `json:"key,omitempty"`
 
 	// Message contains a human readable response message from the API in the case
 	// of an error.
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 
-	// Fields provides a nested map of
+	// Faults provides the list of individual faults detected by the server,
+	// typically for validation errors.
+	Faults []*Fault `json:"faults,omitempty"`
+
+	// Fields provides a nested map of field-level error messages.
 	Fields *Dict `json:"fields,omitempty"`
 }
 
@@ -47,10 +52,41 @@ func (r *ResponseError) StatusCode() int {
 
 // Error provides the response error string.
 func (r *ResponseError) Error() string {
-	if r.Code != "" {
-		return fmt.Sprintf("%d: (%s) %s", r.response.StatusCode(), r.Code, r.Message)
+	parts := []string{fmt.Sprintf("%d", r.response.StatusCode())}
+	if r.Key != "" {
+		parts = append(parts, r.Key)
 	}
-	return fmt.Sprintf("%d: %v", r.response.StatusCode(), r.Message)
+	if r.Message != "" {
+		parts = append(parts, r.Message)
+	}
+	if len(r.Faults) > 0 {
+		fs := make([]string, 0, len(r.Faults))
+		for _, f := range r.Faults {
+			fs = append(fs, f.describe())
+		}
+		parts = append(parts, strings.Join(fs, "; "))
+	}
+	if len(parts) == 1 {
+		if body := strings.TrimSpace(r.response.String()); body != "" {
+			parts = append(parts, body)
+		}
+	}
+	return strings.Join(parts, ": ")
+}
+
+// describe returns a compact human-readable representation of the fault, used
+// by ResponseError.Error to surface fault details in error strings.
+func (f *Fault) describe() string {
+	switch {
+	case f.Code != "" && f.Message != "":
+		return fmt.Sprintf("%s: %s", f.Code, f.Message)
+	case f.Message != "":
+		return f.Message
+	case f.Code != "":
+		return f.Code
+	default:
+		return ""
+	}
 }
 
 // Response provides underlying response, in case it might be useful for
