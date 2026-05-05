@@ -99,21 +99,23 @@ type FindSiloEntries struct {
 // using the EntryCollection's Cursor and NextCursor parameters.
 func (svc *SiloEntriesService) List(ctx context.Context, req *FindSiloEntries) (*SiloEntryCollection, error) {
 	p := path.Join(siloBasePath, entriesPath)
-	query := make(url.Values)
-	if req.Limit != 0 {
-		query.Add("limit", strconv.Itoa(int(req.Limit)))
-	}
-	if req.CreatedAt != "" {
-		query.Add("created_at", req.CreatedAt)
-	}
-	if req.Cursor != "" {
-		query.Add("cursor", req.Cursor)
-	}
-	if req.Folder != "" {
-		query.Add("folder", req.Folder)
-	}
-	if len(query) > 0 {
-		p = p + "?" + query.Encode()
+	if req != nil {
+		query := make(url.Values)
+		if req.Limit != 0 {
+			query.Add("limit", strconv.Itoa(int(req.Limit)))
+		}
+		if req.CreatedAt != "" {
+			query.Add("created_at", req.CreatedAt)
+		}
+		if req.Cursor != "" {
+			query.Add("cursor", req.Cursor)
+		}
+		if req.Folder != "" {
+			query.Add("folder", req.Folder)
+		}
+		if len(query) > 0 {
+			p = p + "?" + query.Encode()
+		}
 	}
 	col := new(SiloEntryCollection)
 	return col, svc.client.get(ctx, p, col)

@@ -168,18 +168,20 @@ func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error
 // Pagination is supported using the JobCollection's Cursor and NextCursor parameters.
 func (svc *JobsService) List(ctx context.Context, req *FindJobs) (*JobCollection, error) {
 	p := path.Join(transformBasePath, jobsPath)
-	query := make(url.Values)
-	if req.Limit != 0 {
-		query.Add("limit", strconv.Itoa(int(req.Limit)))
-	}
-	if req.CreatedAt != "" {
-		query.Add("created_at", req.CreatedAt)
-	}
-	if req.Cursor != "" {
-		query.Add("cursor", req.Cursor)
-	}
-	if len(query) > 0 {
-		p = p + "?" + query.Encode()
+	if req != nil {
+		query := make(url.Values)
+		if req.Limit != 0 {
+			query.Add("limit", strconv.Itoa(int(req.Limit)))
+		}
+		if req.CreatedAt != "" {
+			query.Add("created_at", req.CreatedAt)
+		}
+		if req.Cursor != "" {
+			query.Add("cursor", req.Cursor)
+		}
+		if len(query) > 0 {
+			p = p + "?" + query.Encode()
+		}
 	}
 	col := new(JobCollection)
 	return col, svc.client.get(ctx, p, col)
