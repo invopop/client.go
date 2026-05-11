@@ -31,6 +31,7 @@ type Job struct {
 	Args map[string]string `json:"args,omitempty" title:"Args" description:"Any additional arguments that might be relevant for processing."`
 	Tags []string          `json:"tags,omitempty" title:"Tags" description:"Any tags that may be useful to be associated with the job."`
 
+	Status      string `json:"status,omitempty" title:"Status" description:"Last known status text for this job (e.g. run, queued, ok, ko, skip, cancel, err)."`
 	CompletedAt string `json:"completed_at,omitempty"`
 
 	Intents []*JobIntent `json:"intents,omitempty"`
@@ -50,9 +51,14 @@ type Fault struct {
 	Fields   string   `json:"fields,omitempty" title:"Fields" description:"Nested validation field errors"` // Deprecated
 }
 
-// Status returns true if the job has completed, and if there were any problems
-// executing the jobs, an error.
-func (j *Job) Status() (bool, error) {
+// Done returns true if the job has completed, and if there were any problems
+// executing the job, an error.
+//
+// Note: this method was previously named Status(); it was renamed in favor of
+// the Status string field on Job, which mirrors the API's job status text.
+// Callers that previously used job.Status() should switch to job.Done() (same
+// behavior) or read job.Status directly for the raw status text.
+func (j *Job) Done() (bool, error) {
 	if j.CompletedAt == "" {
 		return false, nil
 	}
