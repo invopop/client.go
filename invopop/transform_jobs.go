@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
+	"strconv"
 )
 
 const (
@@ -87,6 +89,24 @@ type JobIntentEvent struct {
 	Message string            `json:"message,omitempty"`
 }
 
+// FindJobs is used to list jobs ordered by date.
+type FindJobs struct {
+	CreatedAt string `query:"created_at" title:"Created At" description:"Date from which results are provided in descending order." example:"2023-08-02T00:00:00.000Z"`
+	Cursor    string `query:"cursor" title:"Cursor" description:"Position provided by the previous result's next_cursor property."`
+	Limit     int32  `query:"limit" title:"Limit" description:"Maximum number of jobs to show in a page of results, up to 100." example:"20"`
+}
+
+// JobCollection contains a list of Jobs that start from the provided created_at timestamp.
+type JobCollection struct {
+	List []*Job `json:"list"`
+	// Filters
+	CreatedAt string `json:"created_at,omitempty"`
+	// Position
+	Limit      int32  `json:"limit"`
+	Cursor     string `json:"cursor,omitempty"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
 // CreateJob is used to create new jobs
 type CreateJob struct {
 	ID         string `json:"-"`
@@ -142,6 +162,29 @@ func (svc *JobsService) FetchByKey(ctx context.Context, key string) (*Job, error
 	p := path.Join(transformBasePath, jobsPath, jobsKeyPath, key)
 	m := new(Job)
 	return m, svc.client.get(ctx, p, m)
+}
+
+// List provides a paginated list of jobs ordered by creation time descending.
+// Pagination is supported using the JobCollection's Cursor and NextCursor parameters.
+func (svc *JobsService) List(ctx context.Context, req *FindJobs) (*JobCollection, error) {
+	p := path.Join(transformBasePath, jobsPath)
+	if req != nil {
+		query := make(url.Values)
+		if req.Limit != 0 {
+			query.Add("limit", strconv.Itoa(int(req.Limit)))
+		}
+		if req.CreatedAt != "" {
+			query.Add("created_at", req.CreatedAt)
+		}
+		if req.Cursor != "" {
+			query.Add("cursor", req.Cursor)
+		}
+		if len(query) > 0 {
+			p = p + "?" + query.Encode()
+		}
+	}
+	col := new(JobCollection)
+	return col, svc.client.get(ctx, p, col)
 }
 
 // UpdateIntent is a special endpoint only usable by enrolled applications to update the status
