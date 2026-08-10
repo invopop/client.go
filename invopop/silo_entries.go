@@ -15,6 +15,7 @@ import (
 const (
 	entriesPath    = "entries"
 	entriesKeyPath = "key"
+	versionsPath   = "versions"
 )
 
 // Recognized update content types
@@ -33,6 +34,7 @@ type SiloEntry struct {
 	ID        string `json:"id,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
+	Version   string `json:"version"`
 
 	Key       string       `json:"key,omitempty" title:"Key" description:"Key used to identify the entry idempotently within a workspace." example:"invoice-101"`
 	Folder    string       `json:"folder" title:"Folder" description:"Key for the folder where the entry is located." example:"sales"`
@@ -48,9 +50,26 @@ type SiloEntry struct {
 
 	SnippetData json.RawMessage `json:"snippet,omitempty"`
 
-	Files []*SiloFile     `json:"attachments,omitempty"`
-	Data  json.RawMessage `json:"data,omitempty"` // may not always be available
-	Meta  []*SiloMeta     `json:"meta,omitempty" title:"Meta" description:"Additional meta fields associated with the entry."`
+	Files    []*SiloFile        `json:"attachments,omitempty"`
+	Data     json.RawMessage    `json:"data,omitempty"` // may not always be available
+	Meta     []*SiloMeta        `json:"meta,omitempty" title:"Meta" description:"Additional meta fields associated with the entry."`
+	Versions []*SiloDataVersion `json:"versions,omitempty"`
+}
+
+// SiloDataVersion describes an available version of a silo entry's envelope data.
+type SiloDataVersion struct {
+	Version string `json:"version"`
+	At      string `json:"at"`
+	Signed  bool   `json:"signed,omitempty"`
+	Invalid bool   `json:"invalid,omitempty"`
+	Src     string `json:"src,omitempty"`
+	SrcID   string `json:"src_id,omitempty"`
+}
+
+// SiloEntryData contains the envelope data for a specific silo entry version.
+type SiloEntryData struct {
+	Version string          `json:"version"`
+	Data    json.RawMessage `json:"data"`
 }
 
 // SiloEntryCollection contains a list of Entries that start from the provided created_at
@@ -127,6 +146,13 @@ func (svc *SiloEntriesService) Fetch(ctx context.Context, id string) (*SiloEntry
 	return e, svc.client.get(ctx, path.Join(siloBasePath, entriesPath, id), e)
 }
 
+// FetchVersion loads a specific version of a silo entry's envelope data.
+func (svc *SiloEntriesService) FetchVersion(ctx context.Context, id, version string) (*SiloEntryData, error) {
+	d := new(SiloEntryData)
+	p := path.Join(siloBasePath, entriesPath, id, versionsPath, version)
+	return d, svc.client.get(ctx, p, d)
+}
+
 // FetchByKey loads the requested silo entry by its key.
 func (svc *SiloEntriesService) FetchByKey(ctx context.Context, key string) (*SiloEntry, error) {
 	e := new(SiloEntry)
@@ -154,6 +180,15 @@ func (svc *SiloEntriesService) Update(ctx context.Context, req *UpdateSiloEntry)
 func (se *SiloEntry) Envelope() (*gobl.Envelope, error) {
 	env := new(gobl.Envelope)
 	if err := json.Unmarshal(se.Data, env); err != nil {
+		return nil, err
+	}
+	return env, nil
+}
+
+// Envelope provides the versioned silo entry data as a GOBL envelope.
+func (sd *SiloEntryData) Envelope() (*gobl.Envelope, error) {
+	env := new(gobl.Envelope)
+	if err := json.Unmarshal(sd.Data, env); err != nil {
 		return nil, err
 	}
 	return env, nil
