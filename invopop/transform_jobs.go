@@ -3,6 +3,7 @@ package invopop
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -31,7 +32,7 @@ type Job struct {
 	Args map[string]string `json:"args,omitempty" title:"Args" description:"Any additional arguments that might be relevant for processing."`
 	Tags []string          `json:"tags,omitempty" title:"Tags" description:"Any tags that may be useful to be associated with the job."`
 
-	Status      string `json:"status,omitempty" title:"Status" description:"Last known status text for this job (e.g. run, queued, ok, ko, skip, cancel, err)."`
+	Status      string `json:"status,omitempty" title:"Status" description:"Last known status text for this job (e.g. RUN, QUEUED, OK, KO, SKIP, CANCEL, ERR)."`
 	CompletedAt string `json:"completed_at,omitempty"`
 
 	Intents []*JobIntent `json:"intents,omitempty"`
@@ -62,12 +63,40 @@ func (j *Job) Done() (bool, error) {
 	if j.CompletedAt == "" {
 		return false, nil
 	}
-	intent := j.Intents[len(j.Intents)-1]
-	event := intent.Events[len(intent.Events)-1]
-	if event.Status == "KO" {
+	if !j.failed() {
+		return true, nil
+	}
+	if event, intent := j.lastEvent(); event != nil {
 		return true, fmt.Errorf("step %s failed at %s: %s", intent.StepID, event.At, event.Message)
 	}
-	return true, nil
+	// Faults are carried on the job, so they outlive a missing intent or events.
+	if len(j.Faults) > 0 {
+		f := j.Faults[len(j.Faults)-1]
+		return true, fmt.Errorf("step %s failed: %s", f.Provider, f.Message)
+	}
+	return true, errors.New("job failed")
+}
+
+// Status is read with the job itself, unlike the separately-fetched intents.
+// Servers that predate the field omit it, so fall back to the last event.
+func (j *Job) failed() bool {
+	if j.Status != "" {
+		return j.Status == "KO"
+	}
+	event, _ := j.lastEvent()
+	return event != nil && event.Status == "KO"
+}
+
+// Nil when a completed job has no intents, or none of its events are visible yet.
+func (j *Job) lastEvent() (*JobIntentEvent, *JobIntent) {
+	if len(j.Intents) == 0 {
+		return nil, nil
+	}
+	intent := j.Intents[len(j.Intents)-1]
+	if len(intent.Events) == 0 {
+		return nil, nil
+	}
+	return intent.Events[len(intent.Events)-1], intent
 }
 
 // JobIntent represents an attempt to execute a task.
