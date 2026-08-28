@@ -66,11 +66,10 @@ func (j *Job) Done() (bool, error) {
 	if !j.failed() {
 		return true, nil
 	}
-	// Prefer the failing event's detail, falling back to the faults recorded on
-	// the job, which are still present when the intent's events are not.
 	if event, intent := j.lastEvent(); event != nil {
 		return true, fmt.Errorf("step %s failed at %s: %s", intent.StepID, event.At, event.Message)
 	}
+	// Faults are carried on the job, so they outlive a missing intent or events.
 	if len(j.Faults) > 0 {
 		f := j.Faults[len(j.Faults)-1]
 		return true, fmt.Errorf("step %s failed: %s", f.Provider, f.Message)
@@ -78,9 +77,8 @@ func (j *Job) Done() (bool, error) {
 	return true, errors.New("job failed")
 }
 
-// failed reports whether a completed job ended in failure. The job's own status
-// is authoritative and always travels with the completed_at timestamp, unlike
-// the intents; servers that predate the field omit it, so fall back to events.
+// Status is read with the job itself, unlike the separately-fetched intents.
+// Servers that predate the field omit it, so fall back to the last event.
 func (j *Job) failed() bool {
 	if j.Status != "" {
 		return j.Status == "KO"
@@ -89,9 +87,7 @@ func (j *Job) failed() bool {
 	return event != nil && event.Status == "KO"
 }
 
-// lastEvent returns the last event of the last intent alongside its intent. A
-// completed job may still report no intents, or an intent whose events have not
-// become visible yet, so both are nil unless the event is really there.
+// Nil when a completed job has no intents, or none of its events are visible yet.
 func (j *Job) lastEvent() (*JobIntentEvent, *JobIntent) {
 	if len(j.Intents) == 0 {
 		return nil, nil

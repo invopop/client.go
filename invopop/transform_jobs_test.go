@@ -6,6 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testCompletedAt = "2026-08-28T10:00:00.000Z"
+	testStepID      = "step-1"
+	testEventAt     = "2026-08-28T09:59:00.000Z"
+)
+
 func TestJobDone(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -21,10 +27,10 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "ok",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "OK",
 				Intents: []*JobIntent{
-					{StepID: "step-1", Events: []*JobIntentEvent{{Status: "OK"}}},
+					{StepID: testStepID, Events: []*JobIntentEvent{{Status: "OK"}}},
 				},
 			},
 			done: true,
@@ -32,11 +38,11 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "failed with event detail",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "KO",
 				Intents: []*JobIntent{
-					{StepID: "step-1", Events: []*JobIntentEvent{
-						{Status: "KO", At: "2026-08-28T09:59:00.000Z", Message: "boom"},
+					{StepID: testStepID, Events: []*JobIntentEvent{
+						{Status: "KO", At: testEventAt, Message: "boom"},
 					}},
 				},
 			},
@@ -44,13 +50,11 @@ func TestJobDone(t *testing.T) {
 			wantErr: "step step-1 failed at 2026-08-28T09:59:00.000Z: boom",
 		},
 		{
-			// The API omits `events` for an intent whose first event is not yet
-			// visible; the job's faults still describe the failure.
 			name: "failed with intent but no events falls back to faults",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "KO",
-				Intents:     []*JobIntent{{StepID: "step-1"}},
+				Intents:     []*JobIntent{{StepID: testStepID}},
 				Faults:      []*Fault{{Provider: "pdf", Message: "render failed"}},
 			},
 			done:    true,
@@ -59,9 +63,9 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "failed with intent but no events or faults",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "KO",
-				Intents:     []*JobIntent{{StepID: "step-1"}},
+				Intents:     []*JobIntent{{StepID: testStepID}},
 			},
 			done:    true,
 			wantErr: "job failed",
@@ -69,7 +73,7 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "completed with no intents at all",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "KO",
 			},
 			done:    true,
@@ -78,19 +82,18 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "success with no intents at all",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Status:      "OK",
 			},
 			done: true,
 		},
 		{
-			// Servers that predate the job status field.
 			name: "no status falls back to the last event",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
+				CompletedAt: testCompletedAt,
 				Intents: []*JobIntent{
-					{StepID: "step-1", Events: []*JobIntentEvent{
-						{Status: "KO", At: "2026-08-28T09:59:00.000Z", Message: "boom"},
+					{StepID: testStepID, Events: []*JobIntentEvent{
+						{Status: "KO", At: testEventAt, Message: "boom"},
 					}},
 				},
 			},
@@ -100,8 +103,8 @@ func TestJobDone(t *testing.T) {
 		{
 			name: "no status and no events",
 			job: &Job{
-				CompletedAt: "2026-08-28T10:00:00.000Z",
-				Intents:     []*JobIntent{{StepID: "step-1"}},
+				CompletedAt: testCompletedAt,
+				Intents:     []*JobIntent{{StepID: testStepID}},
 			},
 			done: true,
 		},
