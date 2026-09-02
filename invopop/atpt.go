@@ -171,15 +171,15 @@ func (s *AtPtService) ListSeries(ctx context.Context, siloEntryID string) (*List
 // Parameters:
 // - silo_entry_id: The ID of the silo entry (supplier) for which to retrieve the SAFT report.
 // - year: The year for which to retrieve the SAFT report (e.g., 2024).
-// - month: The month for which to retrieve the SAFT report (0-12), if 0, the entire year is retrieved.
+// - period: Report month (1-12) for monthly report. Use 0 for full year report.
 // Note: The response is expected to be a byte array (the SAFT report file).
-func (s *AtPtService) GetSaftReport(ctx context.Context, siloEntryID string, year int, month int) ([]byte, error) {
+func (s *AtPtService) GetSaftReport(ctx context.Context, siloEntryID string, year int, period int) ([]byte, error) {
 	if siloEntryID == "" {
 		return nil, fmt.Errorf("siloEntryID is required")
 	}
 
 	// 2. Build the URL path as per documentation
-	path := fmt.Sprintf("/apps/at-pt/v1/entry/%s/saft?year=%d&month=%d", siloEntryID, year, month)
+	path := fmt.Sprintf("/apps/at-pt/v1/entry/%s/saft?year=%d&period=%d", siloEntryID, year, period)
 
 	// 3. Execute the request
 	resp, err := s.client.getRaw(ctx, path)
