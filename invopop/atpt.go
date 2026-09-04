@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
+	"strconv"
 )
 
 type AtPtService struct {
@@ -141,19 +143,67 @@ func (s *AtPtService) GetSeries(ctx context.Context, siloEntryID string, seriesI
 }
 
 type ListSeriesResponse struct {
-	List []SeriesResponse `json:"list"`
+	List       []SeriesResponse `json:"list"`
+	Limit      int32            `json:"limit,omitempty"`
+	NextCursor string           `json:"next_cursor,omitempty"`
 }
 
-// ListSeries lists all series for a specific supplier in Portugal.
+const MaxListSeriesLimit int32 = 100
+
+// ListAllSeries lists all series for a specific supplier in Portugal.
 //
 // Endpoint: GET /apps/at-pt/v1/entry/{silo_entry_id}/series
-func (s *AtPtService) ListSeries(ctx context.Context, siloEntryID string) (*ListSeriesResponse, error) {
+func (s *AtPtService) ListAllSeries(ctx context.Context, siloEntryID string) (*ListSeriesResponse, error) {
 	if siloEntryID == "" {
 		return nil, fmt.Errorf("siloEntryID is required")
 	}
 
+	combined := &ListSeriesResponse{List: []SeriesResponse{}}
+	cursor := ""
+
+	for {
+		response, err := s.ListSeriesPaginated(ctx, siloEntryID, cursor, MaxListSeriesLimit)
+		if err != nil {
+			return nil, err
+		}
+
+		combined.List = append(combined.List, response.List...)
+		combined.Limit = response.Limit
+
+		if response.NextCursor == "" {
+			break
+		}
+
+		cursor = response.NextCursor
+	}
+
+	return combined, nil
+}
+
+// ListSeriesPaginated lists series for a specific supplier in Portugal with pagination support.
+//
+// Endpoint: GET /apps/at-pt/v1/entry/{silo_entry_id}/series?cursor={cursor}&limit={limit}
+func (s *AtPtService) ListSeriesPaginated(ctx context.Context, siloEntryID string, cursor string, limit int32) (*ListSeriesResponse, error) {
+	// 1. Validate input parameters
+	if siloEntryID == "" {
+		return nil, fmt.Errorf("siloEntryID is required")
+	}
+	if limit <= 0 || limit > MaxListSeriesLimit {
+		return nil, fmt.Errorf("limit must be between 1 and %d", MaxListSeriesLimit)
+	}
+
 	// 2. Build the URL path as per documentation
 	path := fmt.Sprintf("/apps/at-pt/v1/entry/%s/series", siloEntryID)
+	query := make(url.Values)
+	if limit > 0 {
+		query.Add("limit", strconv.Itoa(int(limit)))
+	}
+	if cursor != "" {
+		query.Add("cursor", cursor)
+	}
+	if len(query) > 0 {
+		path = path + "?" + query.Encode()
+	}
 
 	// 3. Execute the request
 	resp := new(ListSeriesResponse)
