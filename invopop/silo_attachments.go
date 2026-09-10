@@ -1,16 +1,27 @@
 package invopop
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"path"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/invopop/gobl/uuid"
 )
 
 const (
-	siloFilesPath = "files"
+	siloFilesPath    = "files"
+	siloFileDataPath = "data"
+
+	// inlineDataMaxSize is the largest payload Create will send inline with
+	// the file's details. Anything above it is streamed separately. Kept well
+	// below the 4MB gRPC message limit the API and silo use internally, so
+	// that inline uploads always have room for the rest of the request.
+	inlineDataMaxSize = 1024 * 1024
 )
 
 // File category constants that match those defined in the Silo service.
@@ -99,6 +110,19 @@ type SiloFileVersion struct {
 	Size int32 `json:"size" title:"Size"`
 }
 
+// UploadSiloFileData is used to send the raw contents of a file that was
+// registered by Create without any data.
+type UploadSiloFileData struct {
+	// UUID of the file whose data is being uploaded
+	ID string
+	// UUID of the associated silo entry
+	EntryID string
+	// MIME data type, sent as the request's content type
+	MIME string
+	// Reader providing the file's contents
+	Data io.Reader
+}
+
 // CreateSiloFile can be used to upload a new file to a silo entry.
 type CreateSiloFile struct {
 	// UUID of file to create
@@ -113,9 +137,15 @@ type CreateSiloFile struct {
 	Key string `json:"key,omitempty" title:"Key"`
 	// Category of the file
 	Category string `json:"category,omitempty" title:"Category"`
-	// Raw file data
-	Data []byte `json:"data" title:"Data"`
-	// MIME data type, determined by server if not provided
+	// Raw file data. Leave empty to register the file and send the contents
+	// separately with UploadData.
+	Data []byte `json:"data,omitempty" title:"Data"`
+	// SHA256 hex hash of the file's contents. Required when data is not provided.
+	SHA256 string `json:"sha256,omitempty" title:"SHA256"`
+	// Size of the file in bytes. Required when data is not provided.
+	Size int32 `json:"size,omitempty" title:"Size"`
+	// MIME data type, determined by server if not provided, and required when
+	// data is not provided.
 	MIME string `json:"mime,omitempty" title:"MIME"`
 	// When true, the embeddable flag implies that this document *may* be
 	// included inside other Files. Useful for example to embed XML
@@ -130,6 +160,10 @@ type CreateSiloFile struct {
 // Create will upload the provided silo file data to the silo service
 // and store with the silo entry. If the request does not have a UUID, one will be
 // assigned automatically.
+//
+// Data larger than inlineDataMaxSize is sent with CreateAndUpload instead of
+// inline, as an inline payload has to be held in memory whole by both the API
+// and the silo, and is capped by the message size limit between them.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
 	if req.ID == "" {
 		req.ID = uuid.V7().String()
@@ -137,15 +171,83 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 	if req.EntryID == "" {
 		return nil, errors.New("missing entry_id")
 	}
-	if len(req.Data) == 0 {
-		return nil, errors.New("missing data")
-	}
 	if req.Name == "" {
 		return nil, errors.New("missing name")
+	}
+	if len(req.Data) > inlineDataMaxSize {
+		return s.CreateAndUpload(ctx, req, req.Data)
+	}
+	if len(req.Data) == 0 {
+		// Without data this only registers the file, and the contents follow
+		// via UploadData. The silo still needs to know what to expect.
+		if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
+			return nil, errors.New("missing data, or sha256, mime and size")
+		}
 	}
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID)
 	m := new(SiloFile)
 	return m, s.client.put(ctx, p, req, m)
+}
+
+// UploadData sends the contents of a file registered earlier by Create without
+// any data. The reader is streamed to the API, so the payload is never held in
+// memory by the API or the silo and no message size limit applies. The data
+// must match the SHA256 and Size declared at creation.
+func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileData) (*SiloFile, error) {
+	if req.ID == "" {
+		return nil, errors.New("missing id")
+	}
+	if req.EntryID == "" {
+		return nil, errors.New("missing entry_id")
+	}
+	if req.Data == nil {
+		return nil, errors.New("missing data")
+	}
+	mime := req.MIME
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+
+	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID, siloFileDataPath)
+	m := new(SiloFile)
+	return m, s.client.putRaw(ctx, p, mime, req.Data, m)
+}
+
+// CreateAndUpload registers the file and then streams its contents in a second
+// call, filling in the SHA256, MIME and Size from the data provided. Prefer
+// this over setting CreateSiloFile.Data for anything large: sending the bytes
+// inline means the API and silo each hold the whole payload in memory.
+func (s *SiloFilesService) CreateAndUpload(ctx context.Context, req *CreateSiloFile, data []byte) (*SiloFile, error) {
+	req.prepareFromData(data)
+	req.Data = nil
+
+	f, err := s.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if f.Stored {
+		// The silo already holds content under this hash, so there is nothing
+		// left to send.
+		return f, nil
+	}
+
+	return s.UploadData(ctx, &UploadSiloFileData{
+		ID:      f.ID,
+		EntryID: req.EntryID,
+		MIME:    req.MIME,
+		Data:    bytes.NewReader(data),
+	})
+}
+
+// prepareFromData fills in the details the silo needs in order to accept the
+// data in a later upload.
+func (req *CreateSiloFile) prepareFromData(data []byte) {
+	req.Size = int32(len(data))
+	if req.MIME == "" {
+		req.MIME = mimetype.Detect(data).String()
+	}
+	sum := sha256.Sum256(data)
+	req.SHA256 = hex.EncodeToString(sum[:])
 }
 
 // Download provides a reader to be able to fetch the file's raw contents.
