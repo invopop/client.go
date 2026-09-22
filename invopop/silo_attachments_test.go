@@ -134,72 +134,52 @@ func TestSiloFilesCreateAndUpload(t *testing.T) {
 	assert.Equal(t, testFileMIME, uploadMIME)
 }
 
-func TestSiloFilesCreateSplitsLargePayloads(t *testing.T) {
-	t.Run("keeps a small payload inline in one call", func(t *testing.T) {
-		var calls []string
-		var body map[string]any
-		responder := func(req *http.Request) (*http.Response, error) {
-			calls = append(calls, req.URL.Path)
-			raw, err := io.ReadAll(req.Body)
-			require.NoError(t, err)
-			require.NoError(t, json.Unmarshal(raw, &body))
-			return fileResponse(`{"id":"file-id","stored":true}`), nil
-		}
-		c := New()
-		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
-
-		_, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
-			ID:      testFileID,
-			EntryID: testEntryID,
-			Name:    "small.xml",
-			Data:    bytes.Repeat([]byte("x"), 1024),
-		})
-		require.NoError(t, err)
-
-		assert.Equal(t, []string{testFilePath}, calls)
-		assert.NotNil(t, body["data"], "small payloads should still travel inline")
-	})
-
-	t.Run("streams a payload over the inline limit", func(t *testing.T) {
-		// Above the limit the bytes must not appear in the details call, which
-		// is the whole point: neither the API nor the silo should have to hold
-		// them in one message.
-		data := bytes.Repeat([]byte("x"), inlineDataMaxSize+1)
-
-		var calls []string
-		var meta map[string]any
-		var uploaded int
-		responder := func(req *http.Request) (*http.Response, error) {
-			calls = append(calls, req.URL.Path)
-			raw, err := io.ReadAll(req.Body)
-			require.NoError(t, err)
-			if strings.HasSuffix(req.URL.Path, "/data") {
-				uploaded = len(raw)
-				return fileResponse(`{"id":"file-id","stored":true}`), nil
+func TestSiloFilesCreateAlwaysStreamsData(t *testing.T) {
+	// Size makes no difference: the payload never travels inline, so neither
+	// the API nor the silo has to hold a whole file in memory.
+	for _, tt := range []struct {
+		name string
+		data []byte
+	}{
+		{"a small payload", bytes.Repeat([]byte("x"), 16)},
+		{"a payload past the old inline limit", bytes.Repeat([]byte("x"), 2*1024*1024)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var calls []string
+			var meta map[string]any
+			var uploaded int
+			responder := func(req *http.Request) (*http.Response, error) {
+				calls = append(calls, req.URL.Path)
+				raw, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				if strings.HasSuffix(req.URL.Path, "/data") {
+					uploaded = len(raw)
+					return fileResponse(`{"id":"file-id","stored":true}`), nil
+				}
+				require.NoError(t, json.Unmarshal(raw, &meta))
+				return fileResponse(`{"id":"file-id","stored":false}`), nil
 			}
-			require.NoError(t, json.Unmarshal(raw, &meta))
-			return fileResponse(`{"id":"file-id","stored":false}`), nil
-		}
-		c := New()
-		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
+			c := New()
+			c.conn = resty.NewWithClient(testy.HTTPClient(responder))
 
-		f, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
-			ID:      testFileID,
-			EntryID: testEntryID,
-			Name:    "large.xml",
-			MIME:    testFileMIME,
-			Data:    data,
+			f, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
+				ID:      testFileID,
+				EntryID: testEntryID,
+				Name:    testFileName,
+				MIME:    testFileMIME,
+				Data:    tt.data,
+			})
+			require.NoError(t, err)
+			assert.True(t, f.Stored)
+
+			assert.Equal(t, []string{testFilePath, testDataPath}, calls)
+
+			_, present := meta["data"]
+			assert.False(t, present, "data must never travel inline")
+			assert.Equal(t, float64(len(tt.data)), meta["size"])
+			assert.Equal(t, len(tt.data), uploaded)
 		})
-		require.NoError(t, err)
-		assert.True(t, f.Stored)
-
-		assert.Equal(t, []string{testFilePath, testDataPath}, calls)
-
-		_, present := meta["data"]
-		assert.False(t, present, "large payloads must not travel inline")
-		assert.Equal(t, float64(len(data)), meta["size"])
-		assert.Equal(t, len(data), uploaded)
-	})
+	}
 }
 
 func TestSiloFilesCreateAndUploadSkipsStoredContent(t *testing.T) {

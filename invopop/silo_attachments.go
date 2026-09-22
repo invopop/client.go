@@ -16,12 +16,6 @@ import (
 const (
 	siloFilesPath    = "files"
 	siloFileDataPath = "data"
-
-	// inlineDataMaxSize is the largest payload Create will send inline with
-	// the file's details. Anything above it is streamed separately. Kept well
-	// below the 4MB gRPC message limit the API and silo use internally, so
-	// that inline uploads always have room for the rest of the request.
-	inlineDataMaxSize = 1024 * 1024
 )
 
 // File category constants that match those defined in the Silo service.
@@ -161,9 +155,10 @@ type CreateSiloFile struct {
 // and store with the silo entry. If the request does not have a UUID, one will be
 // assigned automatically.
 //
-// Data larger than inlineDataMaxSize is sent with CreateAndUpload instead of
-// inline, as an inline payload has to be held in memory whole by both the API
-// and the silo, and is capped by the message size limit between them.
+// Data is always sent with CreateAndUpload rather than inline. An inline
+// payload has to be held in memory whole by both the API and the silo and is
+// capped by the message size limit between them, neither of which is worth
+// saving a round trip for.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
 	if req.ID == "" {
 		req.ID = uuid.V7().String()
@@ -174,15 +169,13 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 	if req.Name == "" {
 		return nil, errors.New("missing name")
 	}
-	if len(req.Data) > inlineDataMaxSize {
+	if len(req.Data) > 0 {
 		return s.CreateAndUpload(ctx, req, req.Data)
 	}
-	if len(req.Data) == 0 {
-		// Without data this only registers the file, and the contents follow
-		// via UploadData. The silo still needs to know what to expect.
-		if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
-			return nil, errors.New("missing data, or sha256, mime and size")
-		}
+	// Without data this only registers the file, and the contents follow via
+	// UploadData. The silo still needs to know what to expect.
+	if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
+		return nil, errors.New("missing data, or sha256, mime and size")
 	}
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID)
 	m := new(SiloFile)
