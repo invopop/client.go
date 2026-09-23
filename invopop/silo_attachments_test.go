@@ -3,14 +3,13 @@ package invopop
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/invopop/gobl/dsig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/flimzy/testy"
@@ -68,16 +67,14 @@ func TestSiloFilesCreateWithoutData(t *testing.T) {
 		assert.Equal(t, testFileID, f.ID)
 		assert.False(t, f.Stored)
 
-		// The point of this path is that the bytes do not travel inline.
 		_, present := body["data"]
 		assert.False(t, present, "data must be omitted when not provided")
 	})
 }
 
-func TestSiloFilesCreateAndUpload(t *testing.T) {
+func TestSiloFilesCreateStreamsData(t *testing.T) {
 	data := []byte("<Invoice>hello</Invoice>")
-	sum := sha256.Sum256(data)
-	wantHash := hex.EncodeToString(sum[:])
+	wantHash := dsig.NewSHA256Digest(data).Value
 
 	var calls []string
 	var meta map[string]any
@@ -105,14 +102,15 @@ func TestSiloFilesCreateAndUpload(t *testing.T) {
 	c := New()
 	c.conn = resty.NewWithClient(testy.HTTPClient(responder))
 
-	f, err := c.Silo().Files().CreateAndUpload(context.Background(), &CreateSiloFile{
+	f, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
 		ID:       testFileID,
 		EntryID:  testEntryID,
 		Name:     testFileName,
 		Key:      "ubl",
 		Category: FileCategoryFormat,
-		MIME:     "application/xml",
-	}, data)
+		MIME:     testFileMIME,
+		Data:     data,
+	})
 	require.NoError(t, err)
 	assert.True(t, f.Stored)
 
@@ -121,7 +119,7 @@ func TestSiloFilesCreateAndUpload(t *testing.T) {
 		"PUT " + testDataPath,
 	}, calls)
 
-	// The registration call carries only the details, never the payload.
+	// registration carries details only
 	assert.Equal(t, wantHash, meta["sha256"])
 	assert.Equal(t, float64(len(data)), meta["size"])
 	assert.Equal(t, testFileMIME, meta["mime"])
@@ -129,62 +127,14 @@ func TestSiloFilesCreateAndUpload(t *testing.T) {
 	_, present := meta["data"]
 	assert.False(t, present, "data must not be sent inline")
 
-	// The data call carries the raw bytes, not JSON or base64.
+	// data call carries raw bytes
 	assert.Equal(t, data, uploaded)
 	assert.Equal(t, testFileMIME, uploadMIME)
 }
 
-func TestSiloFilesCreateAlwaysStreamsData(t *testing.T) {
-	// Size makes no difference: the payload never travels inline, so neither
-	// the API nor the silo has to hold a whole file in memory.
-	for _, tt := range []struct {
-		name string
-		data []byte
-	}{
-		{"a small payload", bytes.Repeat([]byte("x"), 16)},
-		{"a payload past the old inline limit", bytes.Repeat([]byte("x"), 2*1024*1024)},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			var calls []string
-			var meta map[string]any
-			var uploaded int
-			responder := func(req *http.Request) (*http.Response, error) {
-				calls = append(calls, req.URL.Path)
-				raw, err := io.ReadAll(req.Body)
-				require.NoError(t, err)
-				if strings.HasSuffix(req.URL.Path, "/data") {
-					uploaded = len(raw)
-					return fileResponse(`{"id":"file-id","stored":true}`), nil
-				}
-				require.NoError(t, json.Unmarshal(raw, &meta))
-				return fileResponse(`{"id":"file-id","stored":false}`), nil
-			}
-			c := New()
-			c.conn = resty.NewWithClient(testy.HTTPClient(responder))
-
-			f, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
-				ID:      testFileID,
-				EntryID: testEntryID,
-				Name:    testFileName,
-				MIME:    testFileMIME,
-				Data:    tt.data,
-			})
-			require.NoError(t, err)
-			assert.True(t, f.Stored)
-
-			assert.Equal(t, []string{testFilePath, testDataPath}, calls)
-
-			_, present := meta["data"]
-			assert.False(t, present, "data must never travel inline")
-			assert.Equal(t, float64(len(tt.data)), meta["size"])
-			assert.Equal(t, len(tt.data), uploaded)
-		})
-	}
-}
-
-func TestSiloFilesCreateAndUploadSkipsStoredContent(t *testing.T) {
-	// The silo hands back the existing file when it already holds content with
-	// the same hash, so sending the payload again would be wasted work.
+func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
+	// The silo returns the existing file when it already holds content with the
+	// same hash, so sending the payload again would be wasted.
 	var calls []string
 	responder := func(req *http.Request) (*http.Response, error) {
 		calls = append(calls, req.URL.Path)
@@ -193,11 +143,12 @@ func TestSiloFilesCreateAndUploadSkipsStoredContent(t *testing.T) {
 	c := New()
 	c.conn = resty.NewWithClient(testy.HTTPClient(responder))
 
-	f, err := c.Silo().Files().CreateAndUpload(context.Background(), &CreateSiloFile{
+	f, err := c.Silo().Files().Create(context.Background(), &CreateSiloFile{
 		ID:      testFileID,
 		EntryID: testEntryID,
 		Name:    testFileName,
-	}, []byte("already stored"))
+		Data:    []byte("already stored"),
+	})
 	require.NoError(t, err)
 	assert.True(t, f.Stored)
 	assert.Equal(t, []string{testFilePath}, calls)

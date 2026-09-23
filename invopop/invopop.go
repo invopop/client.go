@@ -192,8 +192,7 @@ func (c *Client) put(ctx context.Context, path string, in, out any) error {
 	return re.handle(res)
 }
 
-// putRaw sends the reader's contents as the request body without any encoding,
-// so large payloads stream out instead of being buffered.
+// putRaw sends the reader's contents as the raw request body.
 func (c *Client) putRaw(ctx context.Context, path, mime string, in io.Reader, out any) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().

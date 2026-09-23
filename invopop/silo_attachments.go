@@ -3,13 +3,12 @@ package invopop
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"io"
 	"path"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/invopop/gobl/dsig"
 	"github.com/invopop/gobl/uuid"
 )
 
@@ -155,11 +154,34 @@ type CreateSiloFile struct {
 // and store with the silo entry. If the request does not have a UUID, one will be
 // assigned automatically.
 //
-// Data is always sent with CreateAndUpload rather than inline. An inline
-// payload has to be held in memory whole by both the API and the silo and is
-// capped by the message size limit between them, neither of which is worth
-// saving a round trip for.
+// Data, if set, is streamed in a second call rather than sent inline, so
+// neither the API nor the silo holds the whole file.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
+	data := req.Data
+	if len(data) > 0 {
+		req.prepareFromData(data)
+		req.Data = nil
+	}
+
+	f, err := s.register(ctx, req)
+	if err != nil || len(data) == 0 {
+		return f, err
+	}
+	if f.Stored {
+		// Content already held under this hash; nothing left to send.
+		return f, nil
+	}
+
+	return s.UploadData(ctx, &UploadSiloFileData{
+		ID:      f.ID,
+		EntryID: req.EntryID,
+		MIME:    req.MIME,
+		Data:    bytes.NewReader(data),
+	})
+}
+
+// register records the file's details, leaving the contents to UploadData.
+func (s *SiloFilesService) register(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
 	if req.ID == "" {
 		req.ID = uuid.V7().String()
 	}
@@ -169,11 +191,6 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 	if req.Name == "" {
 		return nil, errors.New("missing name")
 	}
-	if len(req.Data) > 0 {
-		return s.CreateAndUpload(ctx, req, req.Data)
-	}
-	// Without data this only registers the file, and the contents follow via
-	// UploadData. The silo still needs to know what to expect.
 	if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
 		return nil, errors.New("missing data, or sha256, mime and size")
 	}
@@ -183,9 +200,7 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 }
 
 // UploadData sends the contents of a file registered earlier by Create without
-// any data. The reader is streamed to the API, so the payload is never held in
-// memory by the API or the silo and no message size limit applies. The data
-// must match the SHA256 and Size declared at creation.
+// any data. The data must match the SHA256 and Size declared at creation.
 func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileData) (*SiloFile, error) {
 	if req.ID == "" {
 		return nil, errors.New("missing id")
@@ -206,41 +221,13 @@ func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileDa
 	return m, s.client.putRaw(ctx, p, mime, req.Data, m)
 }
 
-// CreateAndUpload registers the file and then streams its contents in a second
-// call, filling in the SHA256, MIME and Size from the data provided. Prefer
-// this over setting CreateSiloFile.Data for anything large: sending the bytes
-// inline means the API and silo each hold the whole payload in memory.
-func (s *SiloFilesService) CreateAndUpload(ctx context.Context, req *CreateSiloFile, data []byte) (*SiloFile, error) {
-	req.prepareFromData(data)
-	req.Data = nil
-
-	f, err := s.Create(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	if f.Stored {
-		// The silo already holds content under this hash, so there is nothing
-		// left to send.
-		return f, nil
-	}
-
-	return s.UploadData(ctx, &UploadSiloFileData{
-		ID:      f.ID,
-		EntryID: req.EntryID,
-		MIME:    req.MIME,
-		Data:    bytes.NewReader(data),
-	})
-}
-
-// prepareFromData fills in the details the silo needs in order to accept the
-// data in a later upload.
+// prepareFromData fills in Size, MIME and SHA256 from the data.
 func (req *CreateSiloFile) prepareFromData(data []byte) {
 	req.Size = int32(len(data))
 	if req.MIME == "" {
 		req.MIME = mimetype.Detect(data).String()
 	}
-	sum := sha256.Sum256(data)
-	req.SHA256 = hex.EncodeToString(sum[:])
+	req.SHA256 = dsig.NewSHA256Digest(data).Value
 }
 
 // Download provides a reader to be able to fetch the file's raw contents.
