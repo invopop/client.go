@@ -124,6 +124,89 @@ func TestSiloFilesCreateStreamsData(t *testing.T) {
 	assert.Equal(t, testFileMIME, uploadMIME)
 }
 
+// readerOnly hides any Seek the underlying reader has.
+type readerOnly struct{ r io.Reader }
+
+func (r readerOnly) Read(p []byte) (int, error) { return r.r.Read(p) }
+
+func TestSiloFilesCreateFromContent(t *testing.T) {
+	data := []byte("<Invoice>streamed</Invoice>")
+	wantHash := dsig.NewSHA256Digest(data).Value
+
+	run := func(t *testing.T, content io.Reader, req *CreateSiloFile) (map[string]any, []byte, []string) {
+		t.Helper()
+		var calls []string
+		var meta map[string]any
+		var uploaded []byte
+
+		responder := func(r *http.Request) (*http.Response, error) {
+			calls = append(calls, r.Method+" "+r.URL.Path)
+			raw, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch r.URL.Path {
+			case testFilePath:
+				require.NoError(t, json.Unmarshal(raw, &meta))
+				return jsonResponse(`{"id":"file-id","stored":false}`), nil
+			case testDataPath:
+				uploaded = raw
+				return jsonResponse(`{"id":"file-id","stored":true}`), nil
+			}
+			t.Fatalf("unexpected path %s", r.URL.Path)
+			return nil, nil
+		}
+
+		c := New()
+		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
+		req.ID, req.EntryID, req.Name = testFileID, testEntryID, testFileName
+		req.Content = content
+
+		f, err := c.Silo().Files().Create(context.Background(), req)
+		require.NoError(t, err)
+		assert.True(t, f.Stored)
+		return meta, uploaded, calls
+	}
+
+	t.Run("measures and rewinds a seekable reader", func(t *testing.T) {
+		meta, uploaded, calls := run(t, bytes.NewReader(data), &CreateSiloFile{})
+		assert.Equal(t, []string{"PUT " + testFilePath, "PUT " + testDataPath}, calls)
+		assert.Equal(t, wantHash, meta["sha256"])
+		assert.Equal(t, float64(len(data)), meta["size"])
+		assert.NotEmpty(t, meta["mime"], "mime should be detected from the contents")
+		assert.Equal(t, data, uploaded, "the reader must be wound back before sending")
+	})
+
+	t.Run("holds a reader that cannot seek", func(t *testing.T) {
+		meta, uploaded, _ := run(t, readerOnly{bytes.NewReader(data)}, &CreateSiloFile{})
+		assert.Equal(t, wantHash, meta["sha256"])
+		assert.Equal(t, float64(len(data)), meta["size"])
+		assert.Equal(t, data, uploaded)
+	})
+
+	t.Run("sends a described reader straight through", func(t *testing.T) {
+		// Once-through and undescribed, this would arrive empty: whatever read
+		// it to find the hash would have drained it.
+		meta, uploaded, _ := run(t, readerOnly{bytes.NewReader(data)}, &CreateSiloFile{
+			SHA256: wantHash,
+			Size:   int32(len(data)),
+			MIME:   testFileMIME,
+		})
+		assert.Equal(t, testFileMIME, meta["mime"])
+		assert.Equal(t, data, uploaded)
+	})
+}
+
+func TestSiloFilesCreateRejectsDataAndContent(t *testing.T) {
+	_, err := New().Silo().Files().Create(context.Background(), &CreateSiloFile{
+		ID:      testFileID,
+		EntryID: testEntryID,
+		Name:    testFileName,
+		Data:    []byte("x"),
+		Content: bytes.NewReader([]byte("y")),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "both data and content")
+}
+
 func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
 	// The silo returns the existing file when it already holds content with the
 	// same hash, so sending the payload again would be wasted.

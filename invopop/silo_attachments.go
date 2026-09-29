@@ -3,8 +3,12 @@ package invopop
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"path"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -15,6 +19,11 @@ import (
 const (
 	siloFilesPath    = "files"
 	siloFileDataPath = "data"
+
+	defaultFileMIME = "application/octet-stream"
+
+	// All mimetype needs to identify a type.
+	mimeSniffLen = 3072
 )
 
 // File category constants that match those defined in the Silo service.
@@ -131,8 +140,14 @@ type CreateSiloFile struct {
 	// Category of the file
 	Category string `json:"category,omitempty" title:"Category"`
 	// Raw file data. Leave empty to register the file and send the contents
-	// separately with UploadData.
+	// separately with UploadData, or use Content to stream them.
 	Data []byte `json:"data,omitempty" title:"Data"`
+	// Content provides the file's contents as a stream, instead of Data.
+	//
+	// The hash and size are needed before the contents can be sent, so unless
+	// SHA256 and Size are set the reader is measured first: a seekable one is
+	// read and rewound, anything else is held in memory until Create returns.
+	Content io.Reader `json:"-"`
 	// SHA256 hex hash of the file's contents. Required when data is not provided.
 	SHA256 string `json:"sha256,omitempty" title:"SHA256"`
 	// Size of the file in bytes. Required when data is not provided.
@@ -157,14 +172,24 @@ type CreateSiloFile struct {
 // Data, if set, is streamed in a second call rather than sent inline, so
 // neither the API nor the silo holds the whole file.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
-	data := req.Data
-	if len(data) > 0 {
-		req.prepareFromData(data)
+	if len(req.Data) > 0 && req.Content != nil {
+		return nil, errors.New("cannot set both data and content")
+	}
+
+	body := req.Content
+	if len(req.Data) > 0 {
+		req.prepareFromData(req.Data)
+		body = bytes.NewReader(req.Data)
 		req.Data = nil
+	} else if body != nil {
+		var err error
+		if body, err = req.prepareFromContent(body); err != nil {
+			return nil, err
+		}
 	}
 
 	f, err := s.register(ctx, req)
-	if err != nil || len(data) == 0 {
+	if err != nil || body == nil {
 		return f, err
 	}
 	if f.Stored {
@@ -176,8 +201,67 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 		ID:      f.ID,
 		EntryID: req.EntryID,
 		MIME:    req.MIME,
-		Data:    bytes.NewReader(data),
+		Data:    body,
 	})
+}
+
+// prepareFromContent fills in whatever registration needs that the caller did
+// not provide, and returns the reader to send the contents from.
+func (req *CreateSiloFile) prepareFromContent(r io.Reader) (io.Reader, error) {
+	if req.SHA256 != "" && req.Size > 0 {
+		if req.MIME == "" {
+			req.MIME = defaultFileMIME
+		}
+		return r, nil
+	}
+
+	// A seekable reader can be measured and wound back. Anything else has to
+	// be held, since none of this can be sent after the contents.
+	rs, ok := r.(io.ReadSeeker)
+	if !ok {
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return nil, fmt.Errorf("reading content: %w", err)
+		}
+		req.prepareFromData(data)
+		return bytes.NewReader(data), nil
+	}
+
+	mime, size, sum, err := scanContent(rs)
+	if err != nil {
+		return nil, err
+	}
+	if size > math.MaxInt32 {
+		return nil, fmt.Errorf("content is %d bytes, over the %d limit", size, int64(math.MaxInt32))
+	}
+	if _, err := rs.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("rewinding content: %w", err)
+	}
+
+	req.Size = int32(size)
+	req.SHA256 = sum
+	if req.MIME == "" {
+		req.MIME = mime
+	}
+	return rs, nil
+}
+
+// scanContent reads r to the end, reporting what registration needs.
+func scanContent(r io.Reader) (mime string, size int64, sum string, err error) {
+	h := sha256.New()
+	head := make([]byte, mimeSniffLen)
+	n, err := io.ReadFull(r, head)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return "", 0, "", fmt.Errorf("reading content: %w", err)
+	}
+	head = head[:n]
+	h.Write(head)
+
+	rest, err := io.Copy(h, r)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("reading content: %w", err)
+	}
+	return mimetype.Detect(head).String(), int64(n) + rest, hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // register records the file's details, leaving the contents to UploadData.
@@ -213,7 +297,7 @@ func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileDa
 	}
 	mime := req.MIME
 	if mime == "" {
-		mime = "application/octet-stream"
+		mime = defaultFileMIME
 	}
 
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID, siloFileDataPath)
