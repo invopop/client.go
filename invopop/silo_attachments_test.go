@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/invopop/gobl/dsig"
+	"github.com/invopop/gobl/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/flimzy/testy"
@@ -17,21 +17,13 @@ import (
 )
 
 const (
+	errMissingFileData = "missing data, or sha256, mime and size"
+
 	testFileID   = "file-id"
-	testEntryID  = "entry-id"
-	testFileName = "invoice.xml"
 	testFileMIME = "application/xml"
 	testFilePath = "/silo/v1/entries/" + testEntryID + "/files/" + testFileID
 	testDataPath = testFilePath + "/data"
 )
-
-func fileResponse(body string) *http.Response {
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"application/json"}},
-		Body:       io.NopCloser(strings.NewReader(body)),
-	}
-}
 
 func TestSiloFilesCreateWithoutData(t *testing.T) {
 	t.Run("requires the details the silo needs to expect an upload", func(t *testing.T) {
@@ -50,7 +42,7 @@ func TestSiloFilesCreateWithoutData(t *testing.T) {
 			raw, err := io.ReadAll(req.Body)
 			require.NoError(t, err)
 			require.NoError(t, json.Unmarshal(raw, &body))
-			return fileResponse(`{"id":"file-id","stored":false}`), nil
+			return jsonResponse(`{"id":"file-id","stored":false}`), nil
 		}
 		c := New()
 		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
@@ -89,11 +81,11 @@ func TestSiloFilesCreateStreamsData(t *testing.T) {
 		switch req.URL.Path {
 		case testFilePath:
 			require.NoError(t, json.Unmarshal(raw, &meta))
-			return fileResponse(`{"id":"file-id","stored":false}`), nil
+			return jsonResponse(`{"id":"file-id","stored":false}`), nil
 		case testDataPath:
 			uploaded = raw
 			uploadMIME = req.Header.Get("Content-Type")
-			return fileResponse(`{"id":"file-id","stored":true}`), nil
+			return jsonResponse(`{"id":"file-id","stored":true}`), nil
 		}
 		t.Fatalf("unexpected path %s", req.URL.Path)
 		return nil, nil
@@ -138,7 +130,7 @@ func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
 	var calls []string
 	responder := func(req *http.Request) (*http.Response, error) {
 		calls = append(calls, req.URL.Path)
-		return fileResponse(`{"id":"file-id","stored":true}`), nil
+		return jsonResponse(`{"id":"file-id","stored":true}`), nil
 	}
 	c := New()
 	c.conn = resty.NewWithClient(testy.HTTPClient(responder))
@@ -159,7 +151,7 @@ func TestSiloFilesUploadData(t *testing.T) {
 		var mime string
 		responder := func(req *http.Request) (*http.Response, error) {
 			mime = req.Header.Get("Content-Type")
-			return fileResponse(`{"id":"file-id","stored":true}`), nil
+			return jsonResponse(`{"id":"file-id","stored":true}`), nil
 		}
 		c := New()
 		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
@@ -182,4 +174,118 @@ func TestSiloFilesUploadData(t *testing.T) {
 		require.Error(t, err)
 		assert.EqualError(t, err, "missing data")
 	})
+}
+
+func TestSiloFilesCreateValidation(t *testing.T) {
+	ctx := context.Background()
+	rec := newRecorder(http.StatusOK, `{}`)
+	svc := testClient(t, rec).Silo().Files()
+
+	tests := []struct {
+		name string
+		req  *CreateSiloFile
+		err  string
+	}{
+		{
+			name: "without an entry id",
+			req:  &CreateSiloFile{Name: testFileName, Data: []byte("x")},
+			err:  "missing entry_id",
+		},
+		{
+			name: "without data",
+			req:  &CreateSiloFile{EntryID: testEntryID, Name: testFileName},
+			err:  errMissingFileData,
+		},
+		{
+			name: "with empty data",
+			req:  &CreateSiloFile{EntryID: testEntryID, Name: testFileName, Data: []byte{}},
+			err:  errMissingFileData,
+		},
+		{
+			name: "without a name",
+			req:  &CreateSiloFile{EntryID: testEntryID, Data: []byte("x")},
+			err:  "missing name",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.Create(ctx, tt.req)
+			assert.EqualError(t, err, tt.err)
+		})
+	}
+
+	assert.Empty(t, rec.requests, "validation should fail before any request is made")
+}
+
+func TestSiloFilesCreateAssignsID(t *testing.T) {
+	ctx := context.Background()
+	rec := newRecorder(http.StatusOK, `{"id":"file-1"}`)
+	c := testClient(t, rec)
+
+	// No data, so registration is the only call.
+	req := &CreateSiloFile{
+		EntryID: testEntryID,
+		Name:    "invoice.pdf",
+		SHA256:  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		MIME:    "application/pdf",
+		Size:    4,
+	}
+	_, err := c.Silo().Files().Create(ctx, req)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, req.ID, "the request should be updated with the new ID")
+	parsed, err := uuid.Parse(req.ID)
+	require.NoError(t, err, "should assign a valid UUID")
+	assert.Equal(t, 7, int(parsed.Version()))
+	assert.Equal(t, "/silo/v1/entries/"+testEntryID+"/files/"+req.ID, rec.last().URL.Path)
+}
+
+func TestSiloFilesDownload(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("without an id", func(t *testing.T) {
+		c := testClient(t, newRecorder(http.StatusOK, `{}`))
+		_, err := c.Silo().Files().Download(ctx, testEntryID, "")
+		assert.EqualError(t, err, "missing id")
+	})
+
+	t.Run("without an entry id", func(t *testing.T) {
+		c := testClient(t, newRecorder(http.StatusOK, `{}`))
+		_, err := c.Silo().Files().Download(ctx, "", "file-1")
+		assert.EqualError(t, err, "missing entry_id")
+	})
+
+	t.Run("returns the file contents", func(t *testing.T) {
+		rec := newRecorder(http.StatusOK, `file contents`)
+		c := testClient(t, rec)
+
+		body, err := c.Silo().Files().Download(ctx, testEntryID, "file-1")
+		require.NoError(t, err)
+		defer body.Close() //nolint:errcheck
+
+		assert.Equal(t, "/silo/v1/entries/entry-1/files/file-1", rec.last().URL.Path)
+
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, "file contents", string(data))
+	})
+
+	t.Run("with an error response", func(t *testing.T) {
+		c := testClient(t, newRecorder(http.StatusNotFound, `{"message":"gone"}`))
+		_, err := c.Silo().Files().Download(ctx, testEntryID, "file-1")
+		require.Error(t, err)
+		assert.True(t, IsNotFound(err))
+	})
+}
+
+func TestFileCategories(t *testing.T) {
+	// These values are validated by the Silo service, so they must not drift.
+	assert.Equal(t, "", FileCategoryDefault)
+	assert.Equal(t, "format", FileCategoryFormat)
+	assert.Equal(t, "request", FileCategoryRequest)
+	assert.Equal(t, "response", FileCategoryResponse)
+	assert.Equal(t, "agreement", FileCategoryAgreement)
+	assert.Equal(t, "verification", FileCategoryVerification)
+	assert.Equal(t, "attachment", FileCategoryAttachment)
 }
