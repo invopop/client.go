@@ -64,7 +64,7 @@ func TestSiloFilesCreateWithoutData(t *testing.T) {
 	})
 }
 
-func TestSiloFilesCreateStreamsData(t *testing.T) {
+func TestSiloFilesCreateUploadsDataSeparately(t *testing.T) {
 	data := []byte("<Invoice>hello</Invoice>")
 	wantHash := dsig.NewSHA256Digest(data).Value
 
@@ -129,7 +129,7 @@ type readerOnly struct{ r io.Reader }
 
 func (r readerOnly) Read(p []byte) (int, error) { return r.r.Read(p) }
 
-func TestSiloFilesCreateFromContent(t *testing.T) {
+func TestSiloFilesCreateStream(t *testing.T) {
 	data := []byte("<Invoice>streamed</Invoice>")
 	wantHash := dsig.NewSHA256Digest(data).Value
 
@@ -158,9 +158,8 @@ func TestSiloFilesCreateFromContent(t *testing.T) {
 		c := New()
 		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
 		req.ID, req.EntryID, req.Name = testFileID, testEntryID, testFileName
-		req.Content = content
 
-		f, err := c.Silo().Files().Create(context.Background(), req)
+		f, err := c.Silo().Files().CreateStream(context.Background(), req, content)
 		require.NoError(t, err)
 		assert.True(t, f.Stored)
 		return meta, uploaded, calls
@@ -195,16 +194,25 @@ func TestSiloFilesCreateFromContent(t *testing.T) {
 	})
 }
 
-func TestSiloFilesCreateRejectsDataAndContent(t *testing.T) {
-	_, err := New().Silo().Files().Create(context.Background(), &CreateSiloFile{
-		ID:      testFileID,
-		EntryID: testEntryID,
-		Name:    testFileName,
-		Data:    []byte("x"),
-		Content: bytes.NewReader([]byte("y")),
+func TestSiloFilesCreateStreamValidation(t *testing.T) {
+	files := New().Silo().Files()
+
+	t.Run("without content", func(t *testing.T) {
+		_, err := files.CreateStream(context.Background(), &CreateSiloFile{
+			ID: testFileID, EntryID: testEntryID, Name: testFileName,
+		}, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "missing content")
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "both data and content")
+
+	t.Run("with data as well", func(t *testing.T) {
+		_, err := files.CreateStream(context.Background(), &CreateSiloFile{
+			ID: testFileID, EntryID: testEntryID, Name: testFileName,
+			Data: []byte("x"),
+		}, bytes.NewReader([]byte("y")))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "data must be empty")
+	})
 }
 
 func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {

@@ -140,14 +140,9 @@ type CreateSiloFile struct {
 	// Category of the file
 	Category string `json:"category,omitempty" title:"Category"`
 	// Raw file data. Leave empty to register the file and send the contents
-	// separately with UploadData, or use Content to stream them.
+	// separately with UploadData, or use CreateStream to send them from a
+	// reader.
 	Data []byte `json:"data,omitempty" title:"Data"`
-	// Content provides the file's contents as a stream, instead of Data.
-	//
-	// The hash and size are needed before the contents can be sent, so unless
-	// SHA256 and Size are set the reader is measured first: a seekable one is
-	// read and rewound, anything else is held in memory until Create returns.
-	Content io.Reader `json:"-"`
 	// SHA256 hex hash of the file's contents. Required when data is not provided.
 	SHA256 string `json:"sha256,omitempty" title:"SHA256"`
 	// Size of the file in bytes. Required when data is not provided.
@@ -172,22 +167,39 @@ type CreateSiloFile struct {
 // Data, if set, is streamed in a second call rather than sent inline, so
 // neither the API nor the silo holds the whole file.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
-	if len(req.Data) > 0 && req.Content != nil {
-		return nil, errors.New("cannot set both data and content")
-	}
-
-	body := req.Content
+	var body io.Reader
 	if len(req.Data) > 0 {
 		req.prepareFromData(req.Data)
 		body = bytes.NewReader(req.Data)
 		req.Data = nil
-	} else if body != nil {
-		var err error
-		if body, err = req.prepareFromContent(body); err != nil {
-			return nil, err
-		}
+	}
+	return s.create(ctx, req, body)
+}
+
+// CreateStream adds a new file to a silo entry, sending its contents from the
+// given reader rather than holding them in memory.
+//
+// Registration has to describe the file before the contents go anywhere, so
+// unless SHA256 and Size are set the reader is measured first: a seekable one
+// is read and wound back, anything else is held until the call returns. MIME
+// is detected from the contents when it is not given.
+func (s *SiloFilesService) CreateStream(ctx context.Context, req *CreateSiloFile, content io.Reader) (*SiloFile, error) {
+	if content == nil {
+		return nil, errors.New("missing content")
+	}
+	if len(req.Data) > 0 {
+		return nil, errors.New("data must be empty when sending content from a reader")
 	}
 
+	body, err := req.prepareFromContent(content)
+	if err != nil {
+		return nil, err
+	}
+	return s.create(ctx, req, body)
+}
+
+// create registers the file, then sends whatever contents are left to send.
+func (s *SiloFilesService) create(ctx context.Context, req *CreateSiloFile, body io.Reader) (*SiloFile, error) {
 	f, err := s.register(ctx, req)
 	if err != nil || body == nil {
 		return f, err
