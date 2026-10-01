@@ -233,7 +233,9 @@ func (req *CreateSiloFile) prepareData() (io.Reader, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading data: %w", err)
 		}
-		req.prepareFromData(data)
+		if err := req.prepareFromData(data); err != nil {
+			return nil, err
+		}
 		req.Data = bytes.NewReader(data)
 		return req.Data, nil
 	}
@@ -242,14 +244,15 @@ func (req *CreateSiloFile) prepareData() (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	if size > math.MaxInt32 {
-		return nil, fmt.Errorf("data is %d bytes, over the %d limit", size, int64(math.MaxInt32))
+	n, err := fileSize(size)
+	if err != nil {
+		return nil, err
 	}
 	if _, err := rs.Seek(0, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("rewinding data: %w", err)
 	}
 
-	req.Size = int32(size)
+	req.Size = n
 	req.SHA256 = sum
 	if req.MIME == "" {
 		req.MIME = mime
@@ -311,12 +314,26 @@ func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileDa
 }
 
 // prepareFromData fills in Size, MIME and SHA256 from the data.
-func (req *CreateSiloFile) prepareFromData(data []byte) {
-	req.Size = int32(len(data))
+func (req *CreateSiloFile) prepareFromData(data []byte) error {
+	size, err := fileSize(int64(len(data)))
+	if err != nil {
+		return err
+	}
+	req.Size = size
 	if req.MIME == "" {
 		req.MIME = mimetype.Detect(data).String()
 	}
 	req.SHA256 = dsig.NewSHA256Digest(data).Value
+	return nil
+}
+
+// fileSize converts a measured size into the int32 the silo records,
+// refusing one too large to describe rather than letting it wrap.
+func fileSize(n int64) (int32, error) {
+	if n > math.MaxInt32 {
+		return 0, fmt.Errorf("data is %d bytes, over the %d limit", n, int64(math.MaxInt32))
+	}
+	return int32(n), nil
 }
 
 // Download provides a reader to be able to fetch the file's raw contents.

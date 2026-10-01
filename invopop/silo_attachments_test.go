@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math"
 	"net/http"
 	"testing"
 
@@ -260,6 +261,17 @@ func TestSiloFilesCreateFromReader(t *testing.T) {
 		assert.Equal(t, testFileMIME, meta["mime"])
 		assert.Equal(t, data, uploaded)
 	})
+}
+
+func TestFileSize(t *testing.T) {
+	// Exercised directly: a payload over the limit is too large to build in a
+	// test, and both measuring paths share this check.
+	n, err := fileSize(math.MaxInt32)
+	require.NoError(t, err)
+	assert.Equal(t, int32(math.MaxInt32), n)
+
+	_, err = fileSize(math.MaxInt32 + 1)
+	assert.ErrorContains(t, err, "over the 2147483647 limit")
 }
 
 func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
