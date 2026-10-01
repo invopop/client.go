@@ -171,7 +171,6 @@ func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*Si
 	if len(req.Data) > 0 {
 		req.prepareFromData(req.Data)
 		body = bytes.NewReader(req.Data)
-		req.Data = nil
 	}
 	return s.create(ctx, req, body)
 }
@@ -290,9 +289,14 @@ func (s *SiloFilesService) register(ctx context.Context, req *CreateSiloFile) (*
 	if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
 		return nil, errors.New("missing data, or sha256, mime and size")
 	}
+	// The contents go to UploadData, so registration sends a copy without
+	// them. Clearing the caller's own Data instead would leave a retry of
+	// Create after a failed upload with nothing to send.
+	reg := *req
+	reg.Data = nil
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID)
 	m := new(SiloFile)
-	return m, s.client.put(ctx, p, req, m)
+	return m, s.client.put(ctx, p, &reg, m)
 }
 
 // UploadData sends the contents of a file registered earlier by Create without

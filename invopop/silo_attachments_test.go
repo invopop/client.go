@@ -124,6 +124,62 @@ func TestSiloFilesCreateUploadsDataSeparately(t *testing.T) {
 	assert.Equal(t, testFileMIME, uploadMIME)
 }
 
+func TestSiloFilesCreateRetriesFailedUpload(t *testing.T) {
+	data := []byte("<Invoice>hello</Invoice>")
+
+	var calls []string
+	var uploaded []byte
+	failUpload := true
+
+	responder := func(req *http.Request) (*http.Response, error) {
+		calls = append(calls, req.Method+" "+req.URL.Path)
+		raw, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+
+		switch req.URL.Path {
+		case testFilePath:
+			return jsonResponse(`{"id":"file-id","stored":false}`), nil
+		case testDataPath:
+			if failUpload {
+				failUpload = false
+				res := jsonResponse(`{"message":"unavailable"}`)
+				res.StatusCode = http.StatusServiceUnavailable
+				return res, nil
+			}
+			uploaded = raw
+			return jsonResponse(`{"id":"file-id","stored":true}`), nil
+		}
+		t.Fatalf("unexpected path %s", req.URL.Path)
+		return nil, nil
+	}
+
+	c := New()
+	c.conn = resty.NewWithClient(testy.HTTPClient(responder))
+
+	req := &CreateSiloFile{
+		ID:      testFileID,
+		EntryID: testEntryID,
+		Name:    testFileName,
+		MIME:    testFileMIME,
+		Data:    data,
+	}
+	_, err := c.Silo().Files().Create(context.Background(), req)
+	require.Error(t, err)
+	assert.Equal(t, data, req.Data, "the caller's data must survive a failed upload")
+
+	f, err := c.Silo().Files().Create(context.Background(), req)
+	require.NoError(t, err)
+	assert.True(t, f.Stored)
+	assert.Equal(t, data, uploaded)
+
+	assert.Equal(t, []string{
+		"PUT " + testFilePath,
+		"PUT " + testDataPath,
+		"PUT " + testFilePath,
+		"PUT " + testDataPath,
+	}, calls)
+}
+
 // readerOnly hides any Seek the underlying reader has.
 type readerOnly struct{ r io.Reader }
 
