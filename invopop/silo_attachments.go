@@ -139,10 +139,10 @@ type CreateSiloFile struct {
 	Key string `json:"key,omitempty" title:"Key"`
 	// Category of the file
 	Category string `json:"category,omitempty" title:"Category"`
-	// Raw file data. Leave empty to register the file and send the contents
-	// separately with UploadData, or use CreateStream to send them from a
-	// reader.
-	Data []byte `json:"data,omitempty" title:"Data"`
+	// Reader providing the file's contents, which are streamed after the file
+	// is registered. Leave nil to register the file only, and send the
+	// contents separately with UploadData.
+	Data io.Reader `json:"-" title:"Data"`
 	// SHA256 hex hash of the file's contents. Required when data is not provided.
 	SHA256 string `json:"sha256,omitempty" title:"SHA256"`
 	// Size of the file in bytes. Required when data is not provided.
@@ -160,45 +160,36 @@ type CreateSiloFile struct {
 	Meta map[string]string `json:"meta,omitempty" title:"Meta"`
 }
 
-// Create will upload the provided silo file data to the silo service
-// and store with the silo entry. If the request does not have a UUID, one will be
-// assigned automatically.
-//
-// Data, if set, is streamed in a second call rather than sent inline, so
-// neither the API nor the silo holds the whole file.
-func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
-	var body io.Reader
-	if len(req.Data) > 0 {
-		req.prepareFromData(req.Data)
-		body = bytes.NewReader(req.Data)
-	}
-	return s.create(ctx, req, body)
-}
-
-// CreateStream adds a new file to a silo entry, sending its contents from the
-// given reader rather than holding them in memory.
+// Create registers a new file with a silo entry and streams its contents
+// from Data, so neither the API nor the silo has to hold the whole file. If the
+// request does not have a UUID, one will be assigned automatically.
 //
 // Registration has to describe the file before the contents go anywhere, so
-// unless SHA256 and Size are set the reader is measured first: a seekable one
-// is read and wound back, anything else is held until the call returns. MIME
+// unless SHA256 and Size are set, Data is read once to measure it first. A
+// reader that can seek is read from its start, measured, and wound back. Any
+// other reader is held in memory, and Data is replaced with the held copy. MIME
 // is detected from the contents when it is not given.
-func (s *SiloFilesService) CreateStream(ctx context.Context, req *CreateSiloFile, content io.Reader) (*SiloFile, error) {
-	if content == nil {
-		return nil, errors.New("missing content")
+//
+// The request is updated with whatever was filled in, so if the upload fails,
+// Create may be retried with the same request. That is not possible with a
+// reader that cannot seek and was described in advance, since it is sent
+// straight through and cannot be read again.
+func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
+	if req.EntryID == "" {
+		return nil, errors.New("missing entry_id")
 	}
-	if len(req.Data) > 0 {
-		return nil, errors.New("data must be empty when sending content from a reader")
+	if req.Name == "" {
+		return nil, errors.New("missing name")
 	}
 
-	body, err := req.prepareFromContent(content)
-	if err != nil {
-		return nil, err
+	var body io.Reader
+	if req.Data != nil {
+		var err error
+		if body, err = req.prepareData(); err != nil {
+			return nil, err
+		}
 	}
-	return s.create(ctx, req, body)
-}
 
-// create registers the file, then sends whatever contents are left to send.
-func (s *SiloFilesService) create(ctx context.Context, req *CreateSiloFile, body io.Reader) (*SiloFile, error) {
 	f, err := s.register(ctx, req)
 	if err != nil || body == nil {
 		return f, err
@@ -216,26 +207,35 @@ func (s *SiloFilesService) create(ctx context.Context, req *CreateSiloFile, body
 	})
 }
 
-// prepareFromContent fills in whatever registration needs that the caller did
-// not provide, and returns the reader to send the contents from.
-func (req *CreateSiloFile) prepareFromContent(r io.Reader) (io.Reader, error) {
+// prepareData fills in whatever registration needs that the caller did not
+// provide, and returns the reader to send the contents from.
+func (req *CreateSiloFile) prepareData() (io.Reader, error) {
+	rs, seekable := req.Data.(io.ReadSeeker)
+	if seekable {
+		// Always from the start, so that a retry after a failed upload sends
+		// the contents again rather than whatever the last attempt left.
+		if _, err := rs.Seek(0, io.SeekStart); err != nil {
+			return nil, fmt.Errorf("rewinding data: %w", err)
+		}
+	}
+
 	if req.SHA256 != "" && req.Size > 0 {
 		if req.MIME == "" {
 			req.MIME = defaultFileMIME
 		}
-		return r, nil
+		return req.Data, nil
 	}
 
-	// A seekable reader can be measured and wound back. Anything else has to
-	// be held, since none of this can be sent after the contents.
-	rs, ok := r.(io.ReadSeeker)
-	if !ok {
-		data, err := io.ReadAll(r)
+	if !seekable {
+		// None of this can be sent after the contents, so they have to be
+		// held. Keeping the held copy on the request lets a retry resend it.
+		data, err := io.ReadAll(req.Data)
 		if err != nil {
-			return nil, fmt.Errorf("reading content: %w", err)
+			return nil, fmt.Errorf("reading data: %w", err)
 		}
 		req.prepareFromData(data)
-		return bytes.NewReader(data), nil
+		req.Data = bytes.NewReader(data)
+		return req.Data, nil
 	}
 
 	mime, size, sum, err := scanContent(rs)
@@ -243,10 +243,10 @@ func (req *CreateSiloFile) prepareFromContent(r io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 	if size > math.MaxInt32 {
-		return nil, fmt.Errorf("content is %d bytes, over the %d limit", size, int64(math.MaxInt32))
+		return nil, fmt.Errorf("data is %d bytes, over the %d limit", size, int64(math.MaxInt32))
 	}
 	if _, err := rs.Seek(0, io.SeekStart); err != nil {
-		return nil, fmt.Errorf("rewinding content: %w", err)
+		return nil, fmt.Errorf("rewinding data: %w", err)
 	}
 
 	req.Size = int32(size)
@@ -263,14 +263,14 @@ func scanContent(r io.Reader) (mime string, size int64, sum string, err error) {
 	head := make([]byte, mimeSniffLen)
 	n, err := io.ReadFull(r, head)
 	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-		return "", 0, "", fmt.Errorf("reading content: %w", err)
+		return "", 0, "", fmt.Errorf("reading data: %w", err)
 	}
 	head = head[:n]
 	h.Write(head)
 
 	rest, err := io.Copy(h, r)
 	if err != nil {
-		return "", 0, "", fmt.Errorf("reading content: %w", err)
+		return "", 0, "", fmt.Errorf("reading data: %w", err)
 	}
 	return mimetype.Detect(head).String(), int64(n) + rest, hex.EncodeToString(h.Sum(nil)), nil
 }
@@ -280,23 +280,12 @@ func (s *SiloFilesService) register(ctx context.Context, req *CreateSiloFile) (*
 	if req.ID == "" {
 		req.ID = uuid.V7().String()
 	}
-	if req.EntryID == "" {
-		return nil, errors.New("missing entry_id")
-	}
-	if req.Name == "" {
-		return nil, errors.New("missing name")
-	}
 	if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
 		return nil, errors.New("missing data, or sha256, mime and size")
 	}
-	// The contents go to UploadData, so registration sends a copy without
-	// them. Clearing the caller's own Data instead would leave a retry of
-	// Create after a failed upload with nothing to send.
-	reg := *req
-	reg.Data = nil
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID)
 	m := new(SiloFile)
-	return m, s.client.put(ctx, p, &reg, m)
+	return m, s.client.put(ctx, p, req, m)
 }
 
 // UploadData sends the contents of a file registered earlier by Create without

@@ -101,7 +101,7 @@ func TestSiloFilesCreateUploadsDataSeparately(t *testing.T) {
 		Key:      "ubl",
 		Category: FileCategoryFormat,
 		MIME:     testFileMIME,
-		Data:     data,
+		Data:     bytes.NewReader(data),
 	})
 	require.NoError(t, err)
 	assert.True(t, f.Stored)
@@ -127,57 +127,69 @@ func TestSiloFilesCreateUploadsDataSeparately(t *testing.T) {
 func TestSiloFilesCreateRetriesFailedUpload(t *testing.T) {
 	data := []byte("<Invoice>hello</Invoice>")
 
-	var calls []string
-	var uploaded []byte
-	failUpload := true
+	tests := []struct {
+		name    string
+		content io.Reader
+	}{
+		{name: "with a seekable reader", content: bytes.NewReader(data)},
+		// Held in memory on the first attempt, and kept on the request.
+		{name: "with a reader that cannot seek", content: readerOnly{bytes.NewReader(data)}},
+	}
 
-	responder := func(req *http.Request) (*http.Response, error) {
-		calls = append(calls, req.Method+" "+req.URL.Path)
-		raw, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var calls []string
+			var uploads [][]byte
+			failUpload := true
 
-		switch req.URL.Path {
-		case testFilePath:
-			return jsonResponse(`{"id":"file-id","stored":false}`), nil
-		case testDataPath:
-			if failUpload {
-				failUpload = false
-				res := jsonResponse(`{"message":"unavailable"}`)
-				res.StatusCode = http.StatusServiceUnavailable
-				return res, nil
+			responder := func(req *http.Request) (*http.Response, error) {
+				calls = append(calls, req.Method+" "+req.URL.Path)
+				raw, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+
+				switch req.URL.Path {
+				case testFilePath:
+					return jsonResponse(`{"id":"file-id","stored":false}`), nil
+				case testDataPath:
+					uploads = append(uploads, raw)
+					if failUpload {
+						failUpload = false
+						res := jsonResponse(`{"message":"unavailable"}`)
+						res.StatusCode = http.StatusServiceUnavailable
+						return res, nil
+					}
+					return jsonResponse(`{"id":"file-id","stored":true}`), nil
+				}
+				t.Fatalf("unexpected path %s", req.URL.Path)
+				return nil, nil
 			}
-			uploaded = raw
-			return jsonResponse(`{"id":"file-id","stored":true}`), nil
-		}
-		t.Fatalf("unexpected path %s", req.URL.Path)
-		return nil, nil
+
+			c := New()
+			c.conn = resty.NewWithClient(testy.HTTPClient(responder))
+
+			req := &CreateSiloFile{
+				ID:      testFileID,
+				EntryID: testEntryID,
+				Name:    testFileName,
+				MIME:    testFileMIME,
+				Data:    tt.content,
+			}
+			_, err := c.Silo().Files().Create(context.Background(), req)
+			require.Error(t, err)
+
+			f, err := c.Silo().Files().Create(context.Background(), req)
+			require.NoError(t, err)
+			assert.True(t, f.Stored)
+
+			assert.Equal(t, []string{
+				"PUT " + testFilePath,
+				"PUT " + testDataPath,
+				"PUT " + testFilePath,
+				"PUT " + testDataPath,
+			}, calls)
+			assert.Equal(t, [][]byte{data, data}, uploads, "the retry must send the contents again")
+		})
 	}
-
-	c := New()
-	c.conn = resty.NewWithClient(testy.HTTPClient(responder))
-
-	req := &CreateSiloFile{
-		ID:      testFileID,
-		EntryID: testEntryID,
-		Name:    testFileName,
-		MIME:    testFileMIME,
-		Data:    data,
-	}
-	_, err := c.Silo().Files().Create(context.Background(), req)
-	require.Error(t, err)
-	assert.Equal(t, data, req.Data, "the caller's data must survive a failed upload")
-
-	f, err := c.Silo().Files().Create(context.Background(), req)
-	require.NoError(t, err)
-	assert.True(t, f.Stored)
-	assert.Equal(t, data, uploaded)
-
-	assert.Equal(t, []string{
-		"PUT " + testFilePath,
-		"PUT " + testDataPath,
-		"PUT " + testFilePath,
-		"PUT " + testDataPath,
-	}, calls)
 }
 
 // readerOnly hides any Seek the underlying reader has.
@@ -185,7 +197,7 @@ type readerOnly struct{ r io.Reader }
 
 func (r readerOnly) Read(p []byte) (int, error) { return r.r.Read(p) }
 
-func TestSiloFilesCreateStream(t *testing.T) {
+func TestSiloFilesCreateFromReader(t *testing.T) {
 	data := []byte("<Invoice>streamed</Invoice>")
 	wantHash := dsig.NewSHA256Digest(data).Value
 
@@ -213,9 +225,9 @@ func TestSiloFilesCreateStream(t *testing.T) {
 
 		c := New()
 		c.conn = resty.NewWithClient(testy.HTTPClient(responder))
-		req.ID, req.EntryID, req.Name = testFileID, testEntryID, testFileName
+		req.ID, req.EntryID, req.Name, req.Data = testFileID, testEntryID, testFileName, content
 
-		f, err := c.Silo().Files().CreateStream(context.Background(), req, content)
+		f, err := c.Silo().Files().Create(context.Background(), req)
 		require.NoError(t, err)
 		assert.True(t, f.Stored)
 		return meta, uploaded, calls
@@ -250,27 +262,6 @@ func TestSiloFilesCreateStream(t *testing.T) {
 	})
 }
 
-func TestSiloFilesCreateStreamValidation(t *testing.T) {
-	files := New().Silo().Files()
-
-	t.Run("without content", func(t *testing.T) {
-		_, err := files.CreateStream(context.Background(), &CreateSiloFile{
-			ID: testFileID, EntryID: testEntryID, Name: testFileName,
-		}, nil)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "missing content")
-	})
-
-	t.Run("with data as well", func(t *testing.T) {
-		_, err := files.CreateStream(context.Background(), &CreateSiloFile{
-			ID: testFileID, EntryID: testEntryID, Name: testFileName,
-			Data: []byte("x"),
-		}, bytes.NewReader([]byte("y")))
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "data must be empty")
-	})
-}
-
 func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
 	// The silo returns the existing file when it already holds content with the
 	// same hash, so sending the payload again would be wasted.
@@ -286,7 +277,7 @@ func TestSiloFilesCreateSkipsStoredContent(t *testing.T) {
 		ID:      testFileID,
 		EntryID: testEntryID,
 		Name:    testFileName,
-		Data:    []byte("already stored"),
+		Data:    bytes.NewReader([]byte("already stored")),
 	})
 	require.NoError(t, err)
 	assert.True(t, f.Stored)
@@ -335,7 +326,7 @@ func TestSiloFilesCreateValidation(t *testing.T) {
 	}{
 		{
 			name: "without an entry id",
-			req:  &CreateSiloFile{Name: testFileName, Data: []byte("x")},
+			req:  &CreateSiloFile{Name: testFileName, Data: bytes.NewReader([]byte("x"))},
 			err:  "missing entry_id",
 		},
 		{
@@ -345,12 +336,12 @@ func TestSiloFilesCreateValidation(t *testing.T) {
 		},
 		{
 			name: "with empty data",
-			req:  &CreateSiloFile{EntryID: testEntryID, Name: testFileName, Data: []byte{}},
+			req:  &CreateSiloFile{EntryID: testEntryID, Name: testFileName, Data: bytes.NewReader(nil)},
 			err:  errMissingFileData,
 		},
 		{
 			name: "without a name",
-			req:  &CreateSiloFile{EntryID: testEntryID, Data: []byte("x")},
+			req:  &CreateSiloFile{EntryID: testEntryID, Data: bytes.NewReader([]byte("x"))},
 			err:  "missing name",
 		},
 	}
