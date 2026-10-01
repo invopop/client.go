@@ -112,6 +112,7 @@ const (
 	testStepID      = "step-1"
 	testFolder      = "sales"
 	testFileName    = "f.pdf"
+	testSchema      = "bill/invoice"
 
 	errMissingKey  = "missing key"
 	errMissingData = "missing data"
