@@ -3,6 +3,7 @@ package invopop
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"resty.dev/v3"
@@ -181,6 +182,22 @@ func (c *Client) put(ctx context.Context, path string, in, out any) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().
 		SetContext(ctx).
+		SetBody(in).
+		SetError(re).
+		SetResult(out).
+		Put(path)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
+}
+
+// putRaw sends the reader's contents as the raw request body.
+func (c *Client) putRaw(ctx context.Context, path, mime string, in io.Reader, out any) error {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", mime).
 		SetBody(in).
 		SetError(re).
 		SetResult(out).

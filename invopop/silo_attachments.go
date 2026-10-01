@@ -1,16 +1,29 @@
 package invopop
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"path"
 
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/invopop/gobl/dsig"
 	"github.com/invopop/gobl/uuid"
 )
 
 const (
-	siloFilesPath = "files"
+	siloFilesPath    = "files"
+	siloFileDataPath = "data"
+
+	defaultFileMIME = "application/octet-stream"
+
+	// All mimetype needs to identify a type.
+	mimeSniffLen = 3072
 )
 
 // File category constants that match those defined in the Silo service.
@@ -99,6 +112,19 @@ type SiloFileVersion struct {
 	Size int32 `json:"size" title:"Size"`
 }
 
+// UploadSiloFileData is used to send the raw contents of a file that was
+// registered by Create without any data.
+type UploadSiloFileData struct {
+	// UUID of the file whose data is being uploaded
+	ID string
+	// UUID of the associated silo entry
+	EntryID string
+	// MIME data type, sent as the request's content type
+	MIME string
+	// Reader providing the file's contents
+	Data io.Reader
+}
+
 // CreateSiloFile can be used to upload a new file to a silo entry.
 type CreateSiloFile struct {
 	// UUID of file to create
@@ -113,9 +139,16 @@ type CreateSiloFile struct {
 	Key string `json:"key,omitempty" title:"Key"`
 	// Category of the file
 	Category string `json:"category,omitempty" title:"Category"`
-	// Raw file data
-	Data []byte `json:"data" title:"Data"`
-	// MIME data type, determined by server if not provided
+	// Reader providing the file's contents, which are streamed after the file
+	// is registered. Leave nil to register the file only, and send the
+	// contents separately with UploadData.
+	Data io.Reader `json:"-" title:"Data"`
+	// SHA256 hex hash of the file's contents. Required when data is not provided.
+	SHA256 string `json:"sha256,omitempty" title:"SHA256"`
+	// Size of the file in bytes. Required when data is not provided.
+	Size int32 `json:"size,omitempty" title:"Size"`
+	// MIME data type, determined by server if not provided, and required when
+	// data is not provided.
 	MIME string `json:"mime,omitempty" title:"MIME"`
 	// When true, the embeddable flag implies that this document *may* be
 	// included inside other Files. Useful for example to embed XML
@@ -127,25 +160,180 @@ type CreateSiloFile struct {
 	Meta map[string]string `json:"meta,omitempty" title:"Meta"`
 }
 
-// Create will upload the provided silo file data to the silo service
-// and store with the silo entry. If the request does not have a UUID, one will be
-// assigned automatically.
+// Create registers a new file with a silo entry and streams its contents
+// from Data, so neither the API nor the silo has to hold the whole file. If the
+// request does not have a UUID, one will be assigned automatically.
+//
+// Registration has to describe the file before the contents go anywhere, so
+// unless SHA256 and Size are set, Data is read once to measure it first. A
+// reader that can seek is read from its start, measured, and wound back. Any
+// other reader is held in memory, and Data is replaced with the held copy. MIME
+// is detected from the contents when it is not given.
+//
+// The request is updated with whatever was filled in, so if the upload fails,
+// Create may be retried with the same request. That is not possible with a
+// reader that cannot seek and was described in advance, since it is sent
+// straight through and cannot be read again.
 func (s *SiloFilesService) Create(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
-	if req.ID == "" {
-		req.ID = uuid.V7().String()
-	}
 	if req.EntryID == "" {
 		return nil, errors.New("missing entry_id")
-	}
-	if len(req.Data) == 0 {
-		return nil, errors.New("missing data")
 	}
 	if req.Name == "" {
 		return nil, errors.New("missing name")
 	}
+
+	var body io.Reader
+	if req.Data != nil {
+		var err error
+		if body, err = req.prepareData(); err != nil {
+			return nil, err
+		}
+	}
+
+	f, err := s.register(ctx, req)
+	if err != nil || body == nil {
+		return f, err
+	}
+	if f.Stored {
+		// Content already held under this hash; nothing left to send.
+		return f, nil
+	}
+
+	return s.UploadData(ctx, &UploadSiloFileData{
+		ID:      f.ID,
+		EntryID: req.EntryID,
+		MIME:    req.MIME,
+		Data:    body,
+	})
+}
+
+// prepareData fills in whatever registration needs that the caller did not
+// provide, and returns the reader to send the contents from.
+func (req *CreateSiloFile) prepareData() (io.Reader, error) {
+	rs, seekable := req.Data.(io.ReadSeeker)
+	if seekable {
+		// Always from the start, so that a retry after a failed upload sends
+		// the contents again rather than whatever the last attempt left.
+		if _, err := rs.Seek(0, io.SeekStart); err != nil {
+			return nil, fmt.Errorf("rewinding data: %w", err)
+		}
+	}
+
+	if req.SHA256 != "" && req.Size > 0 {
+		if req.MIME == "" {
+			req.MIME = defaultFileMIME
+		}
+		return req.Data, nil
+	}
+
+	if !seekable {
+		// None of this can be sent after the contents, so they have to be
+		// held. Keeping the held copy on the request lets a retry resend it.
+		data, err := io.ReadAll(req.Data)
+		if err != nil {
+			return nil, fmt.Errorf("reading data: %w", err)
+		}
+		if err := req.prepareFromData(data); err != nil {
+			return nil, err
+		}
+		req.Data = bytes.NewReader(data)
+		return req.Data, nil
+	}
+
+	mime, size, sum, err := scanContent(rs)
+	if err != nil {
+		return nil, err
+	}
+	n, err := fileSize(size)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := rs.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("rewinding data: %w", err)
+	}
+
+	req.Size = n
+	req.SHA256 = sum
+	if req.MIME == "" {
+		req.MIME = mime
+	}
+	return rs, nil
+}
+
+// scanContent reads r to the end, reporting what registration needs.
+func scanContent(r io.Reader) (mime string, size int64, sum string, err error) {
+	h := sha256.New()
+	head := make([]byte, mimeSniffLen)
+	n, err := io.ReadFull(r, head)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return "", 0, "", fmt.Errorf("reading data: %w", err)
+	}
+	head = head[:n]
+	h.Write(head)
+
+	rest, err := io.Copy(h, r)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("reading data: %w", err)
+	}
+	return mimetype.Detect(head).String(), int64(n) + rest, hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// register records the file's details, leaving the contents to UploadData.
+func (s *SiloFilesService) register(ctx context.Context, req *CreateSiloFile) (*SiloFile, error) {
+	if req.ID == "" {
+		req.ID = uuid.V7().String()
+	}
+	if req.SHA256 == "" || req.MIME == "" || req.Size == 0 {
+		return nil, errors.New("missing data, or sha256, mime and size")
+	}
 	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID)
 	m := new(SiloFile)
 	return m, s.client.put(ctx, p, req, m)
+}
+
+// UploadData sends the contents of a file registered earlier by Create without
+// any data. The data must match the SHA256 and Size declared at creation.
+func (s *SiloFilesService) UploadData(ctx context.Context, req *UploadSiloFileData) (*SiloFile, error) {
+	if req.ID == "" {
+		return nil, errors.New("missing id")
+	}
+	if req.EntryID == "" {
+		return nil, errors.New("missing entry_id")
+	}
+	if req.Data == nil {
+		return nil, errors.New("missing data")
+	}
+	mime := req.MIME
+	if mime == "" {
+		mime = defaultFileMIME
+	}
+
+	p := path.Join(siloBasePath, entriesPath, req.EntryID, siloFilesPath, req.ID, siloFileDataPath)
+	m := new(SiloFile)
+	return m, s.client.putRaw(ctx, p, mime, req.Data, m)
+}
+
+// prepareFromData fills in Size, MIME and SHA256 from the data.
+func (req *CreateSiloFile) prepareFromData(data []byte) error {
+	size, err := fileSize(int64(len(data)))
+	if err != nil {
+		return err
+	}
+	req.Size = size
+	if req.MIME == "" {
+		req.MIME = mimetype.Detect(data).String()
+	}
+	req.SHA256 = dsig.NewSHA256Digest(data).Value
+	return nil
+}
+
+// fileSize converts a measured size into the int32 the silo records,
+// refusing one too large to describe rather than letting it wrap.
+func fileSize(n int64) (int32, error) {
+	if n > math.MaxInt32 {
+		return 0, fmt.Errorf("data is %d bytes, over the %d limit", n, int64(math.MaxInt32))
+	}
+	return int32(n), nil
 }
 
 // Download provides a reader to be able to fetch the file's raw contents.

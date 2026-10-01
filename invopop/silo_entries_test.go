@@ -3,9 +3,7 @@ package invopop
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/invopop/client.go/pkg/snippets"
@@ -19,14 +17,10 @@ import (
 func TestSiloEntriesFetchVersion(t *testing.T) {
 	responder := func(req *http.Request) (*http.Response, error) {
 		assert.Equal(t, "/silo/v1/entries/entry-id/versions/version-id", req.URL.Path)
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body: io.NopCloser(strings.NewReader(`{
-				"version":"version-id",
-				"data":{"$schema":"https://gobl.org/draft-0/envelope"}
-			}`)),
-		}, nil
+		return jsonResponse(`{
+			"version":"version-id",
+			"data":{"$schema":"https://gobl.org/draft-0/envelope"}
+		}`), nil
 	}
 	c := New()
 	c.conn = resty.NewWithClient(testy.HTTPClient(responder))

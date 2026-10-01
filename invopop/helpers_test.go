@@ -1,9 +1,9 @@
 package invopop
 
 import (
-	"bytes"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"gitlab.com/flimzy/testy"
@@ -49,12 +49,19 @@ func (r *recorder) respond(req *http.Request) (*http.Response, error) {
 		body = "{}"
 	}
 
+	resp := jsonResponse(body)
+	resp.StatusCode = status
+	resp.Request = req
+	return resp, nil
+}
+
+// jsonResponse builds a canned JSON response for a stubbed round tripper.
+func jsonResponse(body string) *http.Response {
 	return &http.Response{
-		StatusCode: status,
+		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
-		Body:       io.NopCloser(bytes.NewBufferString(body)),
-		Request:    req,
-	}, nil
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
 }
 
 // last returns the most recent request, failing the test if none were made.
