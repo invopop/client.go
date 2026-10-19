@@ -208,6 +208,22 @@ func (c *Client) putRaw(ctx context.Context, path, mime string, in io.Reader, ou
 	return re.handle(res)
 }
 
+// postRaw sends the reader's contents as the raw request body.
+func (c *Client) postRaw(ctx context.Context, path, mime string, in io.Reader, out any) error {
+	re := new(ResponseError)
+	res, err := c.conn.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", mime).
+		SetBody(in).
+		SetError(re).
+		SetResult(out).
+		Post(path)
+	if err != nil {
+		return err
+	}
+	return re.handle(res)
+}
+
 func (c *Client) patch(ctx context.Context, path string, in, out any) error {
 	re := new(ResponseError)
 	res, err := c.conn.R().
