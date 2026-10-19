@@ -49,6 +49,10 @@ func (c *Client) Download(ctx context.Context, url string) (*Download, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Otherwise an error page would pass for the file.
+	if err := rawResponseError(res); err != nil {
+		return nil, err
+	}
 	d := &Download{
 		Name: extractContentFilename(res, url),
 		Type: res.Header().Get("Content-Type"),

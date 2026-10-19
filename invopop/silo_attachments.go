@@ -346,14 +346,15 @@ func (s *SiloFilesService) Download(ctx context.Context, entryID, id string) (io
 	}
 
 	p := path.Join(siloBasePath, entriesPath, entryID, siloFilesPath, id)
-	re := new(ResponseError)
 	res, err := s.client.conn.R().
 		SetContext(ctx).
 		SetDoNotParseResponse(true).
-		SetError(re).
 		Get(p)
 	if err != nil {
 		return nil, err
 	}
-	return res.Body, re.handle(res)
+	if err := rawResponseError(res); err != nil {
+		return nil, err
+	}
+	return res.Body, nil
 }

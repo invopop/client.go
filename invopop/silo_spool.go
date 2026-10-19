@@ -54,16 +54,14 @@ func (s *SiloSpoolService) Download(ctx context.Context, key string) (*Download,
 		return nil, errors.New("missing key")
 	}
 	p := path.Join(siloBasePath, spoolPath, key)
-	re := new(ResponseError)
 	res, err := s.client.conn.R().
 		SetContext(ctx).
 		SetDoNotParseResponse(true).
-		SetError(re).
 		Get(p)
 	if err != nil {
 		return nil, err
 	}
-	if err := re.handle(res); err != nil {
+	if err := rawResponseError(res); err != nil {
 		return nil, err
 	}
 	d := &Download{
