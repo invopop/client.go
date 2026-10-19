@@ -163,8 +163,9 @@ func (svc *SiloGOBLService) Formats(ctx context.Context, req *FetchGOBLFormats) 
 }
 
 // Export converts a GOBL document into the first of the requested formats that
-// accepts it. The document and any attachments are streamed to the server as
-// they are read, and the result is streamed back: close it once read.
+// accepts it. The document and any attachments are streamed to the server as a
+// multipart form as they are read, so there is no limit on their size beyond
+// the server's, and the result is streamed back: close it once read.
 func (svc *SiloGOBLService) Export(ctx context.Context, req *ExportGOBL) (*SiloExport, error) {
 	if len(req.Formats) == 0 {
 		return nil, errors.New("missing formats")
@@ -183,14 +184,12 @@ func (svc *SiloGOBLService) Export(ctx context.Context, req *ExportGOBL) (*SiloE
 
 	p := path.Join(siloBasePath, goblPath, goblConvertPath, goblConvertExportPath) + "?" + formatsQuery(req.Formats).Encode()
 	r := svc.client.conn.R().SetContext(ctx)
-	if len(req.Attachments) == 0 {
-		r.SetHeader("Content-Type", MIMEApplicationJSON).SetBody(req.Data)
-		return sendExport(r, resty.MethodPost, p)
-	}
 
-	// Streamed through a pipe, so no file is held in memory. Closing the
-	// reader once the request is done stops the writer if the server gave
-	// up before reading it all.
+	// Always sent as a multipart form, which the server streams, rather than
+	// as JSON, which it reads whole and limits in size. Written through a
+	// pipe, so nothing is held in memory here either. Closing the reader once
+	// the request is done stops the writer if the server gave up before
+	// reading it all.
 	pr, pw := io.Pipe()
 	defer pr.Close() //nolint:errcheck
 	mw := multipart.NewWriter(pw)
