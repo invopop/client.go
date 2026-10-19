@@ -119,8 +119,19 @@ func TestSiloGOBLExport(t *testing.T) {
 	// Escaped, so the "+" is not taken as a space.
 	assert.Contains(t, r.req.URL.RawQuery, "format=ubl%2Bpeppol%2Bbis-v3")
 	assert.Equal(t, []string{testFormat, testFormatCII}, r.req.URL.Query()["format"])
-	assert.Equal(t, MIMEApplicationJSON, r.req.Header.Get("Content-Type"))
-	assert.JSONEq(t, testGOBLData, string(r.body))
+	// A form even without attachments, as the server reads JSON whole.
+	mt, params, err := mime.ParseMediaType(r.req.Header.Get("Content-Type"))
+	require.NoError(t, err)
+	require.Equal(t, "multipart/form-data", mt)
+	mr := multipart.NewReader(strings.NewReader(string(r.body)), params["boundary"])
+	p, err := mr.NextPart()
+	require.NoError(t, err)
+	assert.Equal(t, "data", p.FormName())
+	data, err := io.ReadAll(p)
+	require.NoError(t, err)
+	assert.JSONEq(t, testGOBLData, string(data))
+	_, err = mr.NextPart()
+	assert.Equal(t, io.EOF, err)
 }
 
 func TestSiloGOBLExportWithAttachments(t *testing.T) {
