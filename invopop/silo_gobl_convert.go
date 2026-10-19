@@ -91,8 +91,13 @@ type ExportGOBL struct {
 
 // ExportGOBLAttachment is a file to embed in an exported document.
 type ExportGOBLAttachment struct {
+	// ID identifies the attachment in the exported document, such as the
+	// reference of a UBL or CII additional document.
+	ID string
 	// Name of the file, e.g. "receipt.pdf". Required.
 	Name string
+	// Desc describes what the file contains.
+	Desc string
 	// MIME type of the file, detected by the server when empty.
 	MIME string
 	// Data provides the file's contents.
@@ -203,23 +208,36 @@ func (svc *SiloGOBLService) Export(ctx context.Context, req *ExportGOBL) (*SiloE
 // writeExportForm writes the GOBL data part first, as the server expects,
 // followed by each attachment.
 func writeExportForm(mw *multipart.Writer, req *ExportGOBL) error {
-	if err := writeFormFile(mw, "data", "data.json", MIMEApplicationJSON, req.Data); err != nil {
+	if err := writeFormPart(mw, formFileHeader("data", "data.json", MIMEApplicationJSON), "data", req.Data); err != nil {
 		return err
 	}
 	for _, a := range req.Attachments {
-		if err := writeFormFile(mw, "attachment", a.Name, a.MIME, a.Data); err != nil {
+		h := formFileHeader("attachment", a.Name, a.MIME)
+		// The standard MIME part headers for both. Encoded-words keep text
+		// that is not plain ASCII intact, and line breaks out of the header.
+		if a.ID != "" {
+			h.Set("Content-ID", mime.QEncoding.Encode("utf-8", a.ID))
+		}
+		if a.Desc != "" {
+			h.Set("Content-Description", mime.QEncoding.Encode("utf-8", a.Desc))
+		}
+		if err := writeFormPart(mw, h, a.Name, a.Data); err != nil {
 			return err
 		}
 	}
 	return mw.Close()
 }
 
-func writeFormFile(mw *multipart.Writer, field, name, mimeType string, data io.Reader) error {
+func formFileHeader(field, name, mimeType string) textproto.MIMEHeader {
 	h := make(textproto.MIMEHeader)
 	// FormatMediaType quotes the parameters and encodes names that are not
 	// plain ASCII.
 	h.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{"name": field, "filename": name}))
 	h.Set("Content-Type", rawMIME(mimeType))
+	return h
+}
+
+func writeFormPart(mw *multipart.Writer, h textproto.MIMEHeader, name string, data io.Reader) error {
 	w, err := mw.CreatePart(h)
 	if err != nil {
 		return err

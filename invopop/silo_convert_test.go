@@ -132,7 +132,7 @@ func TestSiloGOBLExportWithAttachments(t *testing.T) {
 		Formats: []string{testFormat},
 		Data:    strings.NewReader(testGOBLData),
 		Attachments: []*ExportGOBLAttachment{
-			{Name: "recibo nº 1.pdf", MIME: testPDFMIME, Data: strings.NewReader(pdf)},
+			{ID: "REC-1", Name: "recibo nº 1.pdf", Desc: "Recibo nº 1\r\nX-Injected: yes", MIME: testPDFMIME, Data: strings.NewReader(pdf)},
 			{Name: "notes.txt", Data: strings.NewReader("")},
 		},
 	})
@@ -144,8 +144,9 @@ func TestSiloGOBLExportWithAttachments(t *testing.T) {
 	require.Equal(t, "multipart/form-data", mt)
 	mr := multipart.NewReader(strings.NewReader(string(r.body)), params["boundary"])
 
-	type part struct{ field, name, mime, data string }
+	type part struct{ field, name, id, desc, mime, data string }
 	var parts []part
+	dec := new(mime.WordDecoder)
 	for {
 		p, err := mr.NextPart()
 		if err == io.EOF {
@@ -154,12 +155,17 @@ func TestSiloGOBLExportWithAttachments(t *testing.T) {
 		require.NoError(t, err)
 		data, err := io.ReadAll(p)
 		require.NoError(t, err)
-		parts = append(parts, part{p.FormName(), p.FileName(), p.Header.Get("Content-Type"), string(data)})
+		assert.Empty(t, p.Header.Get("X-Injected"), "a line break must not start a new header")
+		id, err := dec.DecodeHeader(p.Header.Get("Content-ID"))
+		require.NoError(t, err)
+		desc, err := dec.DecodeHeader(p.Header.Get("Content-Description"))
+		require.NoError(t, err)
+		parts = append(parts, part{p.FormName(), p.FileName(), id, desc, p.Header.Get("Content-Type"), string(data)})
 	}
 	assert.Equal(t, []part{
-		{"data", "data.json", MIMEApplicationJSON, testGOBLData},
-		{"attachment", "recibo nº 1.pdf", testPDFMIME, pdf},
-		{"attachment", "notes.txt", defaultFileMIME, ""},
+		{"data", "data.json", "", "", MIMEApplicationJSON, testGOBLData},
+		{"attachment", "recibo nº 1.pdf", "REC-1", "Recibo nº 1\r\nX-Injected: yes", testPDFMIME, pdf},
+		{"attachment", "notes.txt", "", "", defaultFileMIME, ""},
 	}, parts)
 }
 
