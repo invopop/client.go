@@ -30,10 +30,6 @@ const (
 	ConvertDirectionImport = "import"
 	// ConvertDirectionExport filters formats that can be exported to.
 	ConvertDirectionExport = "export"
-
-	// maxErrorBodySize bounds how much of an error response is read when the
-	// response body is otherwise streamed.
-	maxErrorBodySize = 64 * 1024
 )
 
 // GOBLFormat describes an external document format, such as UBL or CII, that
@@ -301,19 +297,4 @@ func sendExport(r *resty.Request, method, p string) (*SiloExport, error) {
 		},
 		Format: res.Header().Get(ConvertFormatHeader),
 	}, nil
-}
-
-// rawResponseError reads the error from a response whose body was left
-// unparsed, closing it, as resty only decodes errors when it parses the
-// response.
-func rawResponseError(res *resty.Response) error {
-	if res.IsSuccess() {
-		return nil
-	}
-	defer res.Body.Close() //nolint:errcheck
-	re := new(ResponseError)
-	if data, err := io.ReadAll(io.LimitReader(res.Body, maxErrorBodySize)); err == nil {
-		_ = json.Unmarshal(data, re)
-	}
-	return re.handle(res)
 }

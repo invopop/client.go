@@ -1,8 +1,10 @@
 package invopop
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"resty.dev/v3"
@@ -93,4 +95,27 @@ func asError(err error, status int) *ResponseError {
 		return re
 	}
 	return nil
+}
+
+// maxErrorBodySize bounds how much of an error response is read when the
+// response body is otherwise streamed.
+const maxErrorBodySize = 64 * 1024
+
+// rawResponseError reads the error from a response whose body was left
+// unparsed, as for a download, and closes it: resty only decodes errors when
+// it parses the response. A body that is not an API error, such as another
+// server's error page, leaves the status text as the message.
+func rawResponseError(res *resty.Response) error {
+	if res.IsSuccess() {
+		return nil
+	}
+	defer res.Body.Close() //nolint:errcheck
+	re := new(ResponseError)
+	if data, err := io.ReadAll(io.LimitReader(res.Body, maxErrorBodySize)); err == nil {
+		_ = json.Unmarshal(data, re)
+	}
+	if re.Message == "" {
+		re.Message = http.StatusText(res.StatusCode())
+	}
+	return re.handle(res)
 }
