@@ -96,6 +96,40 @@ func TestSyncActions(t *testing.T) {
 		assert.ErrorIs(t, err, invopop.ErrMissingCredentials)
 	})
 
+	t.Run("doesn't retry definitions it can't encode", func(t *testing.T) {
+		ic, calls := testServer(t, http.StatusOK)
+		req := testRequest()
+		req.Actions[0].ConfigUI = []byte(`{not json`)
+		// A retry would wait until the context ends.
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		_, err := SyncActions(ctx, ic, req, WithBackoff(time.Hour))
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, context.DeadlineExceeded)
+		assert.Zero(t, calls.Load())
+	})
+
+	t.Run("retries attempts that time out", func(t *testing.T) {
+		calls := new(atomic.Int32)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if calls.Add(1) == 1 {
+				// Slower than the attempt's timeout.
+				select {
+				case <-r.Context().Done():
+				case <-time.After(time.Second):
+				}
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(syncResponse))
+		}))
+		defer srv.Close()
+		ic := invopop.New(invopop.WithConfig(&invopop.Config{BaseURL: srv.URL, ClientID: "id", ClientSecret: "secret"}))
+		_, err := SyncActions(ctx, ic, testRequest(), fast, WithTimeout(50*time.Millisecond))
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, calls.Load())
+	})
+
 	t.Run("stops when the context ends", func(t *testing.T) {
 		ic, calls := testServer(t, http.StatusServiceUnavailable)
 		ctx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)

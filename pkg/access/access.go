@@ -5,6 +5,8 @@ package access
 import (
 	"context"
 	"errors"
+	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -90,17 +92,21 @@ func syncActions(ctx context.Context, ic *invopop.Client, req *invopop.SyncActio
 }
 
 // retryable reports whether an error may not happen again: one from Access
-// itself, too many requests, or no response at all.
+// itself, too many requests, or no response at all because the connection
+// failed or the attempt timed out. Anything else, such as definitions that
+// can't be encoded or a request without credentials, fails the same way each
+// time.
 func retryable(err error) bool {
-	if errors.Is(err, invopop.ErrMissingCredentials) || errors.Is(err, invopop.ErrMissingActions) {
-		return false
-	}
 	var re *invopop.ResponseError
 	if errors.As(err, &re) {
 		code := re.StatusCode()
 		return code >= http.StatusInternalServerError || code == http.StatusTooManyRequests
 	}
-	return true
+	var ne net.Error
+	return errors.As(err, &ne) ||
+		errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF)
 }
 
 func logResult(res *invopop.SyncActionsResult) {
