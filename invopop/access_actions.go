@@ -34,6 +34,12 @@ const (
 	SyncedActionUnchanged = "unchanged"
 )
 
+// Errors returned by ActionsService.Sync before making a request.
+var (
+	ErrMissingCredentials = errors.New("missing OAuth client credentials: client_id and client_secret")
+	ErrMissingActions     = errors.New("missing actions")
+)
+
 // ActionsService lets applications keep the actions they provide up to date.
 type ActionsService service
 
@@ -104,10 +110,10 @@ func (s *AccessService) Actions() *ActionsService {
 func (s *ActionsService) Sync(ctx context.Context, req *SyncActions) (*SyncActionsResult, error) {
 	c := s.client
 	if c.clientID == "" || c.clientSecret == "" {
-		return nil, errors.New("missing OAuth client credentials: client_id and client_secret")
+		return nil, ErrMissingCredentials
 	}
 	if req == nil || req.Actions == nil {
-		return nil, errors.New("missing actions")
+		return nil, ErrMissingActions
 	}
 
 	p := path.Join(accessBasePath, actionsSyncPath)
