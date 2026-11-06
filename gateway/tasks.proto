@@ -94,8 +94,8 @@ message TaskResult {
   // task, usually alongside a KO status. When present, they replace the
   // single fault derived from code and message in the job, so include a
   // summary fault if one should be shown. The provider field may be left
-  // empty and will be set to the action that generated the fault. At most
-  // 50 faults are kept per result.
+  // empty and will be set to the action that generated the fault. Faults
+  // are only kept with a KO status, and at most 50 per result.
   repeated Fault faults = 16;
   // reference that can be used to identify the job later such
   // as in a poke request.
