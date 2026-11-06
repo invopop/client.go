@@ -52,3 +52,27 @@ func TestTaskResultHelpers(t *testing.T) {
 		assert.Equal(t, "INVALID: bad data", tr.Message)
 	})
 }
+
+func TestTaskResultWithFaults(t *testing.T) {
+	t.Run("chained on ko", func(t *testing.T) {
+		tr := TaskKO(errors.New("validation failed")).WithFaults(
+			&Fault{Code: "required", Message: "missing tax ID", Paths: []string{"$.supplier.tax_id"}},
+			&Fault{Code: "format", Message: "bad date"},
+		)
+		assert.Equal(t, TaskStatus_KO, tr.Status)
+		assert.Equal(t, "validation failed", tr.Message)
+		require.Len(t, tr.Faults, 2)
+		assert.Equal(t, []string{"$.supplier.tax_id"}, tr.Faults[0].Paths)
+	})
+
+	t.Run("appends on repeat calls", func(t *testing.T) {
+		tr := TaskKO(errors.New("x")).WithFaults(&Fault{Code: "a"}).WithFaults(&Fault{Code: "b"})
+		require.Len(t, tr.Faults, 2)
+		assert.Equal(t, "b", tr.Faults[1].Code)
+	})
+
+	t.Run("none", func(t *testing.T) {
+		tr := TaskKO(errors.New("x")).WithFaults()
+		assert.Empty(t, tr.Faults)
+	})
+}

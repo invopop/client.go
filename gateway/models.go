@@ -42,6 +42,18 @@ func TaskKO(err error) *TaskResult {
 	}
 }
 
+// WithFaults adds the provided faults to the task result, and is designed
+// to be chained, for example:
+//
+//	return gateway.TaskKO(err).WithFaults(faults...)
+//
+// When faults are present on a KO result they replace the single fault that
+// would otherwise be built from the result's code and message.
+func (tr *TaskResult) WithFaults(faults ...*Fault) *TaskResult {
+	tr.Faults = append(tr.Faults, faults...)
+	return tr
+}
+
 // TaskOK provides a simple task result indicating that everything went fine.
 func TaskOK() *TaskResult {
 	return &TaskResult{Status: TaskStatus_OK}

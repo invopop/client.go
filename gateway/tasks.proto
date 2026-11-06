@@ -87,7 +87,16 @@ message TaskResult {
   string message = 3;
   // fields contains a JSON encoded set of nested field validation errors defined
   // by the `gobl.FieldErrors` type.
+  // Prefer faults for new code; the gateway converts fields into faults
+  // when no faults are provided, and fields will be removed in the future.
   bytes fields = 15;
+  // Faults provides a detailed list of issues found while executing the
+  // task, usually alongside a KO status. When present, they replace the
+  // single fault derived from code and message in the job, so include a
+  // summary fault if one should be shown. The provider field may be left
+  // empty and will be set to the action that generated the fault. At most
+  // 50 faults are kept per result.
+  repeated Fault faults = 16;
   // reference that can be used to identify the job later such
   // as in a poke request.
   string ref = 11;
