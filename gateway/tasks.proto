@@ -112,6 +112,10 @@ message TaskResult {
   // by this task, and it should be used for all subsequent actions in
   // the workflow. If data is also included, the silo entry will be created.
   optional string silo_entry_id = 13;
+  // Pops this task charges, for an action whose cost depends on what it
+  // did. Only charged with an OK status; 0 charges the action's declared
+  // pops.
+  int32 pops = 17;
 }
 
 // TaskPoke is used to wake up a task that is currently QUEUED.
