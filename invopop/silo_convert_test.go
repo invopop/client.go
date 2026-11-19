@@ -24,6 +24,8 @@ const (
 	testExportCT  = "application/xml"
 	testExportCD  = `attachment; filename="Factura F-1.xml"`
 	testExportErr = `{"code":"invalid","message":"no format accepts the document"}`
+	testFrom      = "iso6523-actorid-upis::0088:1234567890128"
+	testTo        = "iso6523-actorid-upis::9920:B85905495"
 )
 
 // exportResponder replies to an export as the API does, keeping the request
@@ -234,6 +236,24 @@ func TestSiloGOBLImport(t *testing.T) {
 	assert.Equal(t, testExported, rec.lastBody())
 }
 
+func TestSiloGOBLImportRouting(t *testing.T) {
+	rec := newRecorder(http.StatusOK, `{"format":"ubl+peppol+bis-v3","data":{}}`)
+	c := testClient(t, rec)
+
+	_, err := c.Silo().GOBL().Import(context.Background(), &ImportGOBL{
+		Formats: []string{testFormat},
+		From:    testFrom,
+		To:      testTo,
+		Data:    strings.NewReader(testExported),
+	})
+	require.NoError(t, err)
+
+	q := rec.last().URL.Query()
+	assert.Equal(t, testFormat, q.Get("format"))
+	assert.Equal(t, testFrom, q.Get("from"))
+	assert.Equal(t, testTo, q.Get("to"))
+}
+
 func TestSiloEntriesExport(t *testing.T) {
 	r := new(exportResponder)
 	c := exportClient(t, r)
@@ -294,6 +314,8 @@ func TestSiloEntriesImport(t *testing.T) {
 			AllowInvalid: true,
 			Sign:         true,
 			Private:      true,
+			From:         testFrom,
+			To:           testTo,
 			MIME:         "application/xml",
 			Data:         strings.NewReader(testExported),
 		})
@@ -310,6 +332,8 @@ func TestSiloEntriesImport(t *testing.T) {
 		assert.Equal(t, "true", q.Get("allow_invalid"))
 		assert.Equal(t, "true", q.Get("sign"))
 		assert.Equal(t, "true", q.Get("private"))
+		assert.Equal(t, testFrom, q.Get("from"))
+		assert.Equal(t, testTo, q.Get("to"))
 		assert.Equal(t, "application/xml", req.Header.Get("Content-Type"))
 	})
 
