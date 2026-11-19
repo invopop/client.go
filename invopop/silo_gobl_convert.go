@@ -105,6 +105,12 @@ type ExportGOBLAttachment struct {
 type ImportGOBL struct {
 	// Formats to limit detection to, any when empty.
 	Formats []string
+	// From is the transport address the document was received from, such as
+	// a Peppol participant URI, recorded on the envelope's Head.From.
+	From string
+	// To is the transport address the document was received at, recorded on
+	// the envelope's Head.To.
+	To string
 	// MIME type of the document, sent as the request's content type.
 	MIME string
 	// Data provides the raw document.
@@ -250,7 +256,9 @@ func (svc *SiloGOBLService) Import(ctx context.Context, req *ImportGOBL) (*GOBLI
 		return nil, errors.New("missing data")
 	}
 	p := path.Join(siloBasePath, goblPath, goblConvertPath, goblConvertImportPath)
-	if q := formatsQuery(req.Formats); len(q) > 0 {
+	q := formatsQuery(req.Formats)
+	addRouting(q, req.From, req.To)
+	if len(q) > 0 {
 		p = p + "?" + q.Encode()
 	}
 	out := new(GOBLImport)
@@ -272,6 +280,17 @@ func formatsQuery(formats []string) url.Values {
 		q.Add("format", f)
 	}
 	return q
+}
+
+// addRouting adds the transport addresses a document was received with to an
+// import's query.
+func addRouting(q url.Values, from, to string) {
+	if from != "" {
+		q.Add("from", from)
+	}
+	if to != "" {
+		q.Add("to", to)
+	}
 }
 
 // sendExport performs an export request, leaving the response body to be

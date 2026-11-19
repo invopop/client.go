@@ -51,6 +51,12 @@ type ImportSiloEntry struct {
 	Folder string
 	// Formats to limit detection to, any when empty.
 	Formats []string
+	// From is the transport address the document was received from, such as
+	// a Peppol participant URI, recorded on the envelope's Head.From.
+	From string
+	// To is the transport address the document was received at, recorded on
+	// the envelope's Head.To.
+	To string
 	// Name of the original document's file, e.g. "invoice.xml".
 	Name string
 	// AllowInvalid allows the envelope's contents to be invalid.
@@ -112,6 +118,7 @@ func (svc *SiloEntriesService) Import(ctx context.Context, req *ImportSiloEntry)
 	if req.Private {
 		q.Add("private", strconv.FormatBool(true))
 	}
+	addRouting(q, req.From, req.To)
 
 	e := new(SiloEntry)
 	if req.ID == "" {
