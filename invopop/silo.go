@@ -31,3 +31,8 @@ func (svc *SiloService) GOBL() *SiloGOBLService {
 func (svc *SiloService) Spool() *SiloSpoolService {
 	return (*SiloSpoolService)(svc)
 }
+
+// Comments provides a wrapper around silo entry comment methods.
+func (svc *SiloService) Comments() *SiloCommentsService {
+	return (*SiloCommentsService)(svc)
+}

@@ -79,6 +79,13 @@ func IsForbidden(err error) bool {
 	return asError(err, http.StatusForbidden) != nil
 }
 
+// IsUnprocessableEntity is a helper that will return true if the response
+// error is an unprocessable entity, used for validation errors and for
+// requests the current state of a resource does not allow.
+func IsUnprocessableEntity(err error) bool {
+	return asError(err, http.StatusUnprocessableEntity) != nil
+}
+
 // AsResponseError will extract the ResponseError from the provided error
 // or return nil if no match found.
 func AsResponseError(err error) *ResponseError {

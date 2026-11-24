@@ -109,10 +109,12 @@ func TestStatusHelpers(t *testing.T) {
 		conflict  bool
 		notFound  bool
 		forbidden bool
+		invalid   bool
 	}{
 		{name: "conflict", status: http.StatusConflict, conflict: true},
 		{name: "not found", status: http.StatusNotFound, notFound: true},
 		{name: "forbidden", status: http.StatusForbidden, forbidden: true},
+		{name: "unprocessable entity", status: http.StatusUnprocessableEntity, invalid: true},
 		{name: "unauthorized matches none", status: http.StatusUnauthorized},
 		{name: "server error matches none", status: http.StatusInternalServerError},
 	}
@@ -124,6 +126,7 @@ func TestStatusHelpers(t *testing.T) {
 			assert.Equal(t, tt.conflict, IsConflict(err))
 			assert.Equal(t, tt.notFound, IsNotFound(err))
 			assert.Equal(t, tt.forbidden, IsForbidden(err))
+			assert.Equal(t, tt.invalid, IsUnprocessableEntity(err))
 		})
 	}
 
@@ -132,12 +135,14 @@ func TestStatusHelpers(t *testing.T) {
 		assert.False(t, IsConflict(err))
 		assert.False(t, IsNotFound(err))
 		assert.False(t, IsForbidden(err))
+		assert.False(t, IsUnprocessableEntity(err))
 	})
 
 	t.Run("with a nil error", func(t *testing.T) {
 		assert.False(t, IsConflict(nil))
 		assert.False(t, IsNotFound(nil))
 		assert.False(t, IsForbidden(nil))
+		assert.False(t, IsUnprocessableEntity(nil))
 	})
 }
 
